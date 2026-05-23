@@ -1167,10 +1167,10 @@ function initPageHandlers() {
     const { pageId, el } = e.detail;
 
     if (pageId === 'splash') {
-      // Only navigate if splash is still the active page (guard against auth redirecting first)
       setTimeout(() => {
-        if (document.getElementById('page-splash')) showPage('onboarding');
-      }, 2500);
+        // Only advance if auth hasn't already redirected to home
+        if (!VeloraState.currentUser) showPage('onboarding');
+      }, 2200);
     }
 
     if (pageId === 'onboarding') {
@@ -1489,8 +1489,8 @@ export async function boot() {
   showPage('splash');
 
   // Init auth observer
-  // onLoggedIn  → go home immediately
-  // onLoggedOut → do nothing; splash timer already leads to onboarding → login
+  // onLoggedIn  → show home immediately (overrides any pending navigation)
+  // onLoggedOut → no-op; splash timer in initPageHandlers drives onboarding
   try {
     initAuthObserver(
       async (user, profile) => {
@@ -1498,10 +1498,10 @@ export async function boot() {
         updateSparksDisplay();
         await loadAndShowHome().catch(() => showPage('login'));
       },
-      () => { /* no-op: splash → onboarding → login handles unauthenticated flow */ }
+      () => { /* not logged in — splash timer handles onboarding */ }
     );
   } catch (authErr) {
     console.warn('[VELORA] Firebase auth unavailable:', authErr.message);
-    // Auth unavailable — splash timer will still navigate to onboarding → login
+    // splash timer still fires; nothing extra needed
   }
 }
