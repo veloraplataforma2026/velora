@@ -1276,12 +1276,13 @@ function initPageHandlers() {
         if (group) group.style.display = e.target.checked ? 'flex' : 'none';
       });
 
-      el.querySelector('#age-checkbox')?.addEventListener('click', () => {
-        const cb = el.querySelector('#age-confirm');
-        if (cb) {
-          cb.checked = !cb.checked;
-          el.querySelector('#age-checkbox').innerHTML = cb.checked ? svgIcon('check', 14) : '';
-        }
+      el.querySelector('#age-checkbox')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const box = el.querySelector('#age-checkbox');
+        const isChecked = box.dataset.checked === 'true';
+        box.dataset.checked = (!isChecked).toString();
+        box.innerHTML = !isChecked ? svgIcon('check', 14) : '';
       });
 
       const nextBtn = el.querySelector('#register-next-btn');
@@ -1315,7 +1316,7 @@ function initPageHandlers() {
           const pass  = el.querySelector('#reg-password')?.value;
           const bio   = el.querySelector('#reg-bio')?.value?.trim();
           const isAdult = el.querySelector('#adult-toggle')?.checked;
-          const ageConfirmed = el.querySelector('#age-confirm')?.checked;
+          const ageConfirmed = el.querySelector('#age-checkbox')?.dataset.checked === 'true';
           const interests = [...el.querySelectorAll('[data-interest].active')].map(t => t.dataset.interest);
 
           if (isAdult && !ageConfirmed) { showToast('Confirme que você tem 18+ anos', 'error'); return; }
