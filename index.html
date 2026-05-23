@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#050510">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="VELORA — Plataforma social de conexões futurística. Namoro, amizade e relacionamentos com design bioluminescente único.">
+  <meta property="og:title" content="VELORA — Connect Beyond Limits">
+  <meta property="og:description" content="A plataforma de conexões mais inovadora do mercado. Design futurístico, match em tempo real, galeria exclusiva e muito mais.">
+  <meta property="og:type" content="website">
+
+  <title>VELORA — Connect Beyond Limits</title>
+
+  <!-- Preconnect for performance -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- App Styles -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/animations.css">
+
+  <style>
+    /* Critical inline CSS for initial render */
+    #loading-screen {
+      position: fixed;
+      inset: 0;
+      background: #050510;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.5s ease;
+    }
+    #loading-screen.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+    .loading-logo {
+      font-family: 'Outfit', sans-serif;
+      font-size: 3rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #00F5D4, #7C3CFF);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    .loading-bar {
+      width: 120px;
+      height: 3px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 99px;
+      margin-top: 24px;
+      overflow: hidden;
+    }
+    .loading-bar-fill {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #00F5D4, #FF2BD6);
+      border-radius: 99px;
+      animation: loadingFill 2s ease forwards;
+    }
+    @keyframes loadingFill {
+      0%   { width: 0%; }
+      70%  { width: 85%; }
+      100% { width: 100%; }
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.6; }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Loading Screen (shows before JS boots) -->
+  <div id="loading-screen">
+    <div class="loading-logo">VELORA</div>
+    <div style="font-family:'Outfit',sans-serif;font-size:0.8rem;color:rgba(255,255,255,0.3);margin-top:8px;letter-spacing:0.2em;text-transform:uppercase">
+      Connect Beyond Limits
+    </div>
+    <div class="loading-bar">
+      <div class="loading-bar-fill"></div>
+    </div>
+  </div>
+
+  <!-- Particle Canvas (background effect) -->
+  <canvas id="particle-canvas"></canvas>
+
+  <!-- Toast Container -->
+  <div id="toast-container"></div>
+
+  <!-- Main App Shell -->
+  <div id="app"></div>
+
+  <!-- Firebase SDK (v10 Modular) -->
+  <script type="importmap">
+    {
+      "imports": {
+        "firebase/app": "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js",
+        "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js",
+        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js",
+        "firebase/storage": "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js"
+      }
+    }
+  </script>
+
+  <!-- App Bootstrap -->
+  <script type="module">
+    import { boot } from './js/app.js';
+
+    // Hide loading screen after fonts + modules load
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const loading = document.getElementById('loading-screen');
+        if (loading) loading.classList.add('hidden');
+      }, 2000);
+    });
+
+    // Boot the app
+    try {
+      await boot();
+    } catch (err) {
+      console.error('VELORA boot error:', err);
+      // Fallback: show login even without firebase
+      const loading = document.getElementById('loading-screen');
+      if (loading) loading.classList.add('hidden');
+    }
+  </script>
+</body>
+</html>
