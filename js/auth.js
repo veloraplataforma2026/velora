@@ -5,6 +5,7 @@
    ============================================================ */
 
 import { auth, db } from './firebase-config.js';
+import { uploadProfilePhoto, isCloudinaryConfigured } from './cloudinary.js';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -93,13 +94,21 @@ export async function loginWithEmail(email, password) {
 }
 
 // ─── Email/Password Register ──────────────────────────────
-export async function registerWithEmail(email, password, profileData) {
+export async function registerWithEmail(email, password, profileData, photoFile = null) {
   try {
     const cred = await createUserWithEmailAndPassword(auth, email, password);
-    await createUserProfile(cred.user.uid, {
-      ...profileData,
-      email: cred.user.email,
-    });
+    const uid  = cred.user.uid;
+
+    let photoURL = profileData.photoURL;
+    if (photoFile && isCloudinaryConfigured()) {
+      try {
+        photoURL = await uploadProfilePhoto(uid, photoFile);
+      } catch {
+        // keep the base64 preview if upload fails
+      }
+    }
+
+    await createUserProfile(uid, { ...profileData, photoURL, email: cred.user.email });
     return { success: true, user: cred.user };
   } catch (err) {
     return { success: false, error: getAuthError(err.code) };

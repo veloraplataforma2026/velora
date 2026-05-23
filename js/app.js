@@ -1271,7 +1271,7 @@ function initPageHandlers() {
             displayName: name, bio, age, gender: selectedGender,
             lookingFor: selectedIntents, interests, isAdult,
             photoURL: photoURL || defaultAvatar(name),
-          });
+          }, photoFile);
           nextBtn.classList.remove('btn-loading');
           if (!res.success) showToast(res.error, 'error');
         }
