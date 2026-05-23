@@ -95,24 +95,31 @@ export async function loginWithEmail(email, password) {
 
 // ─── Email/Password Register ──────────────────────────────
 export async function registerWithEmail(email, password, profileData, photoFile = null) {
+  let cred;
   try {
-    const cred = await createUserWithEmailAndPassword(auth, email, password);
-    const uid  = cred.user.uid;
-
-    let photoURL = profileData.photoURL;
-    if (photoFile && isCloudinaryConfigured()) {
-      try {
-        photoURL = await uploadProfilePhoto(uid, photoFile);
-      } catch {
-        // keep the base64 preview if upload fails
-      }
-    }
-
-    await createUserProfile(uid, { ...profileData, photoURL, email: cred.user.email });
-    return { success: true, user: cred.user };
+    cred = await createUserWithEmailAndPassword(auth, email, password);
   } catch (err) {
+    console.error('[VELORA] Auth register error:', err.code, err.message);
     return { success: false, error: getAuthError(err.code) };
   }
+
+  const uid = cred.user.uid;
+
+  let photoURL = profileData.photoURL;
+  if (photoFile && isCloudinaryConfigured()) {
+    try {
+      photoURL = await uploadProfilePhoto(uid, photoFile);
+    } catch { /* keep base64 preview */ }
+  }
+
+  try {
+    await createUserProfile(uid, { ...profileData, photoURL, email: cred.user.email });
+  } catch (firestoreErr) {
+    console.warn('[VELORA] Profile creation failed (non-fatal):', firestoreErr.code, firestoreErr.message);
+    // Auth succeeded — user exists, profile can be created on next login
+  }
+
+  return { success: true, user: cred.user };
 }
 
 // ─── Google OAuth ─────────────────────────────────────────
@@ -151,14 +158,17 @@ export async function resetPassword(email) {
 // ─── Error Messages ───────────────────────────────────────
 function getAuthError(code) {
   const errors = {
-    'auth/email-already-in-use':   'Este e-mail já está em uso.',
-    'auth/invalid-email':           t('errorEmail'),
-    'auth/weak-password':           t('errorPassword'),
-    'auth/user-not-found':          'Usuário não encontrado.',
-    'auth/wrong-password':          'Senha incorreta.',
-    'auth/too-many-requests':       'Muitas tentativas. Tente mais tarde.',
-    'auth/network-request-failed':  'Erro de conexão. Verifique sua internet.',
-    'auth/popup-closed-by-user':    'Login cancelado.',
+    'auth/email-already-in-use':    'Este e-mail já está em uso.',
+    'auth/invalid-email':            t('errorEmail'),
+    'auth/weak-password':            t('errorPassword'),
+    'auth/user-not-found':           'Usuário não encontrado.',
+    'auth/wrong-password':           'Senha incorreta.',
+    'auth/invalid-credential':       'E-mail ou senha incorretos.',
+    'auth/too-many-requests':        'Muitas tentativas. Tente mais tarde.',
+    'auth/network-request-failed':   'Erro de conexão. Verifique sua internet.',
+    'auth/popup-closed-by-user':     'Login cancelado.',
+    'auth/operation-not-allowed':    'Cadastro por e-mail não habilitado. Verifique as configurações do Firebase.',
+    'auth/configuration-not-found':  'Firebase não configurado corretamente.',
   };
-  return errors[code] || t('errorGeneric');
+  return errors[code] || `Erro (${code || 'desconhecido'}). Tente novamente.`;
 }
