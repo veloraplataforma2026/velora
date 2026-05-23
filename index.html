@@ -8,17 +8,17 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="description" content="VELORA — Plataforma social de conexões futurística. Namoro, amizade e relacionamentos com design bioluminescente único.">
   <meta property="og:title" content="VELORA — Connect Beyond Limits">
-  <meta property="og:description" content="A plataforma de conexões mais inovadora do mercado. Design futurístico, match em tempo real, galeria exclusiva e muito mais.">
+  <meta property="og:description" content="A plataforma de conexões mais inovadora do mercado. Design futurístico, match em tempo real, galeria exclusiva.">
   <meta property="og:type" content="website">
 
   <title>VELORA — Connect Beyond Limits</title>
 
-  <!-- Preconnect for performance -->
+  <!-- Preconnect for faster CDN -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://www.gstatic.com">
 
-  <!-- Google Fonts -->
+  <!-- Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
   <!-- App Styles -->
@@ -27,7 +27,6 @@
   <link rel="stylesheet" href="css/animations.css">
 
   <style>
-    /* Critical inline CSS for initial render */
     #loading-screen {
       position: fixed;
       inset: 0;
@@ -54,9 +53,9 @@
       animation: pulse 1.5s ease-in-out infinite;
     }
     .loading-bar {
-      width: 120px;
+      width: 140px;
       height: 3px;
-      background: rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.08);
       border-radius: 99px;
       margin-top: 24px;
       overflow: hidden;
@@ -66,28 +65,26 @@
       width: 0%;
       background: linear-gradient(90deg, #00F5D4, #FF2BD6);
       border-radius: 99px;
-      animation: loadingFill 2s ease forwards;
+      animation: loadingFill 3s ease forwards;
     }
     @keyframes loadingFill {
       0%   { width: 0%; }
-      70%  { width: 85%; }
+      60%  { width: 75%; }
+      85%  { width: 90%; }
       100% { width: 100%; }
     }
     @keyframes pulse {
       0%, 100% { opacity: 1; }
-      50%       { opacity: 0.6; }
-    }
-    @keyframes spin {
-      to { transform: rotate(360deg); }
+      50%       { opacity: 0.5; }
     }
   </style>
 </head>
 
 <body>
-  <!-- Loading Screen (shows before JS boots) -->
+  <!-- Loading Screen -->
   <div id="loading-screen">
     <div class="loading-logo">VELORA</div>
-    <div style="font-family:'Outfit',sans-serif;font-size:0.8rem;color:rgba(255,255,255,0.3);margin-top:8px;letter-spacing:0.2em;text-transform:uppercase">
+    <div style="font-family:'Outfit',sans-serif;font-size:0.75rem;color:rgba(255,255,255,0.25);margin-top:8px;letter-spacing:0.25em;text-transform:uppercase">
       Connect Beyond Limits
     </div>
     <div class="loading-bar">
@@ -95,47 +92,70 @@
     </div>
   </div>
 
-  <!-- Particle Canvas (background effect) -->
+  <!-- Particle Canvas (fixed background) -->
   <canvas id="particle-canvas"></canvas>
 
   <!-- Toast Container -->
   <div id="toast-container"></div>
 
-  <!-- Main App Shell -->
+  <!-- Main App -->
   <div id="app"></div>
 
-  <!-- Firebase SDK (v10 Modular) -->
-  <script type="importmap">
-    {
-      "imports": {
-        "firebase/app": "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js",
-        "firebase/auth": "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js",
-        "firebase/firestore": "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js",
-        "firebase/storage": "https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js"
-      }
-    }
-  </script>
-
-  <!-- App Bootstrap -->
+  <!-- Bootstrap script — dynamic import so the loading screen is
+       always visible and the fallback timeout always fires -->
   <script type="module">
-    import { boot } from './js/app.js';
+    const BOOT_START = Date.now();
+    const MIN_LOADER_MS = 1800;
 
-    // Hide loading screen after fonts + modules load
-    window.addEventListener('load', () => {
-      setTimeout(() => {
-        const loading = document.getElementById('loading-screen');
-        if (loading) loading.classList.add('hidden');
-      }, 2000);
-    });
+    function hideLoader() {
+      const el = document.getElementById('loading-screen');
+      if (el) el.classList.add('hidden');
+    }
 
-    // Boot the app
+    function showFallback(msg) {
+      hideLoader();
+      const app = document.getElementById('app');
+      if (!app) return;
+      app.innerHTML = `
+        <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;
+          justify-content:center;background:#050510;gap:16px;padding:32px;text-align:center">
+          <div style="font-family:Outfit,sans-serif;font-size:2.5rem;font-weight:900;
+            background:linear-gradient(135deg,#00F5D4,#7C3CFF);
+            -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">
+            VELORA
+          </div>
+          <div style="color:rgba(255,255,255,0.4);font-family:Outfit,sans-serif;font-size:0.9rem">
+            ${msg || 'Erro ao carregar. Verifique sua conexão e recarregue.'}
+          </div>
+          <button onclick="location.reload()"
+            style="margin-top:16px;padding:14px 32px;border-radius:99px;
+              background:linear-gradient(135deg,#00F5D4,#7C3CFF);
+              color:#050510;font-family:Outfit,sans-serif;font-weight:700;
+              font-size:1rem;border:none;cursor:pointer">
+            Recarregar
+          </button>
+        </div>
+      `;
+    }
+
+    // Emergency: always hide loader after 8s no matter what
+    const emergency = setTimeout(() => showFallback('Tempo limite de carregamento'), 8000);
+
     try {
+      const { boot } = await import('./js/app.js');
       await boot();
+
+      // Guarantee minimum display time so loading bar animation is seen
+      const elapsed = Date.now() - BOOT_START;
+      const wait    = Math.max(0, MIN_LOADER_MS - elapsed);
+      if (wait > 0) await new Promise(r => setTimeout(r, wait));
+
+      clearTimeout(emergency);
+      hideLoader();
     } catch (err) {
-      console.error('VELORA boot error:', err);
-      // Fallback: show login even without firebase
-      const loading = document.getElementById('loading-screen');
-      if (loading) loading.classList.add('hidden');
+      clearTimeout(emergency);
+      console.error('[VELORA] Boot error:', err);
+      showFallback();
     }
   </script>
 </body>

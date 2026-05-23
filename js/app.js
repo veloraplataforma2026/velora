@@ -16,7 +16,7 @@ import {
   subscribeToMatches, unmatch, MOCK_PROFILES,
 } from './swipe.js';
 import { subscribeToChat, sendMessage, renderMessages, typingIndicatorHTML, MESSAGE_SUGGESTIONS } from './chat.js';
-import { uploadPhoto, getUserGallery, togglePhotoLock, unlockPhoto, renderGalleryGrid } from './gallery.js';
+import { uploadPhoto, getUserGallery, togglePhotoLock, unlockPhoto, deletePhoto, renderGalleryGrid } from './gallery.js';
 import { getBalance, purchaseSparks, updateSparksDisplay, renderStoreHTML } from './currency.js';
 import {
   collection, doc, addDoc, getDocs, onSnapshot,
@@ -999,7 +999,61 @@ function setupGlobalHandlers() {
     updateSparksDisplay();
   };
 
-  window._galleryPhotoClick = () => {};
+  window._galleryPhotoClick = async (photoId) => {
+    const uid = VeloraState.currentUser?.uid;
+    if (!uid) return;
+    const photos = await getUserGallery(uid).catch(() => []);
+    const photo  = photos.find(p => p.id === photoId);
+    if (!photo) return;
+    showModal(`
+      <div>
+        <img src="${photo.url}" style="width:100%;max-height:70vh;object-fit:contain;background:#000">
+        <div class="modal-body">
+          <div class="flex-between">
+            <label class="toggle-switch" style="gap:10px;align-items:center">
+              <input type="checkbox" ${photo.isLocked ? 'checked' : ''} id="photo-lock-toggle">
+              <div class="toggle-track"></div>
+              <div class="toggle-thumb"></div>
+              <span style="font-size:0.9rem">${photo.isLocked ? '🔒 Bloqueada' : '🌐 Pública'}</span>
+            </label>
+            <button class="btn btn-ghost btn-sm" style="color:var(--danger)"
+              onclick="window._deletePhoto('${photo.id}')">🗑️</button>
+          </div>
+        </div>
+      </div>
+    `);
+    setTimeout(() => {
+      document.getElementById('photo-lock-toggle')?.addEventListener('change', async (e) => {
+        await togglePhotoLock(uid, photoId, e.target.checked);
+      });
+    }, 100);
+  };
+
+  window._deletePhoto = async (photoId) => {
+    const uid = VeloraState.currentUser?.uid;
+    if (!uid) return;
+    await deletePhoto(uid, photoId).catch(() => {});
+    document.querySelector('.modal-overlay')?.remove();
+    window._navigate('gallery');
+  };
+
+  window._handleGalleryUpload = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const uid = VeloraState.currentUser?.uid;
+    if (!uid) { showToast('Faça login para adicionar fotos', 'error'); return; }
+    const btn = document.getElementById('gallery-upload-input');
+    showToast('Enviando foto...', 'info');
+    try {
+      await uploadPhoto(uid, file, false, (progress) => {
+        showToast(`Enviando... ${Math.round(progress)}%`, 'info');
+      });
+      showToast('Foto adicionada! ✨', 'success');
+      window._navigate('gallery');
+    } catch (err) {
+      showToast('Erro ao enviar foto: ' + err.message, 'error');
+    }
+  };
 
   window._editProfile = () => {
     showToast('Edição de perfil em breve!', 'info');
@@ -1428,22 +1482,25 @@ export async function boot() {
   registerAllPages();
   initPageHandlers();
 
-  // Show splash
+  // Show splash immediately — must happen before any await
   showPage('splash');
 
-  // Wait for auth
-  const { initAuthObserver } = await import('./auth.js');
-  initAuthObserver(
-    async (user, profile) => {
-      VeloraState.currentUser = { ...user, profile };
-      updateSparksDisplay();
-      await loadAndShowHome();
-    },
-    () => {
-      // Show onboarding then login after splash
-      if (!VeloraState.currentUser) {
-        setTimeout(() => showPage('login'), 2500);
+  // Init auth observer — show login after splash animation if no user
+  try {
+    initAuthObserver(
+      async (user, profile) => {
+        VeloraState.currentUser = { ...user, profile };
+        updateSparksDisplay();
+        await loadAndShowHome().catch(() => showPage('login'));
+      },
+      () => {
+        if (!VeloraState.currentUser) {
+          setTimeout(() => showPage('login'), 2200);
+        }
       }
-    }
-  );
+    );
+  } catch (authErr) {
+    console.warn('[VELORA] Firebase auth unavailable, showing login:', authErr.message);
+    setTimeout(() => showPage('login'), 2200);
+  }
 }

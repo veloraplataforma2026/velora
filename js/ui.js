@@ -16,31 +16,42 @@ export function registerPage(id, renderFn) {
 
 export function showPage(pageId, data = {}) {
   const app = document.getElementById('app');
+  if (!app) return console.warn('App container not found');
+
   const renderFn = pages.get(pageId);
   if (!renderFn) return console.warn(`Page "${pageId}" not found`);
 
-  // Remove old page
-  if (currentPage) {
-    currentPage.classList.add('leaving');
-    setTimeout(() => currentPage?.remove(), 400);
+  // Remove old page after leave animation
+  const leaving = currentPage;
+  if (leaving) {
+    leaving.classList.add('leaving');
+    leaving.addEventListener('animationend', () => leaving.remove(), { once: true });
+    // Fallback removal in case animationend doesn't fire
+    setTimeout(() => leaving.remove(), 450);
   }
 
   // Create new page
   const pageEl = document.createElement('div');
   pageEl.className = 'page entering';
   pageEl.id = `page-${pageId}`;
-  pageEl.innerHTML = renderFn(data);
+
+  try {
+    pageEl.innerHTML = renderFn(data);
+  } catch (err) {
+    console.error(`[VELORA] renderFn error for page "${pageId}":`, err);
+    pageEl.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:#00F5D4;font-family:Outfit,sans-serif">Erro ao carregar página</div>`;
+  }
+
   app.appendChild(pageEl);
 
-  // Force reflow then remove entering class
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => pageEl.classList.remove('entering'));
-  });
+  // Remove entering class after animation completes
+  pageEl.addEventListener('animationend', () => pageEl.classList.remove('entering'), { once: true });
+  // Fallback: ensure visible even if animationend doesn't fire
+  setTimeout(() => pageEl.classList.remove('entering'), 400);
 
   currentPage = pageEl;
-  window.scrollTo(0, 0);
+  app.scrollTop = 0;
 
-  // Trigger page-specific init
   window.dispatchEvent(new CustomEvent('pageReady', { detail: { pageId, data, el: pageEl } }));
 }
 
@@ -199,74 +210,76 @@ export function initParticles() {
   if (!canvas) return;
   const ctx = canvas.getContext('2d');
 
+  const isMobile = window.innerWidth <= 480;
+  const COUNT    = isMobile ? 28 : 50;
+  const CONNECT  = isMobile ? 80 : 110;
+
   const resize = () => {
     canvas.width  = window.innerWidth;
     canvas.height = window.innerHeight;
   };
   resize();
-  window.addEventListener('resize', resize);
+  window.addEventListener('resize', resize, { passive: true });
 
-  const PARTICLE_COLORS = [
+  const COLORS = [
     'rgba(0,245,212,',
     'rgba(255,43,214,',
     'rgba(124,60,255,',
     'rgba(247,201,72,',
   ];
 
-  const particles = Array.from({ length: 60 }, () => createParticle());
+  const particles = Array.from({ length: COUNT }, () => ({
+    x:     Math.random() * canvas.width,
+    y:     Math.random() * canvas.height,
+    vx:    (Math.random() - 0.5) * 0.35,
+    vy:    (Math.random() - 0.5) * 0.35,
+    r:     Math.random() * 1.8 + 0.4,
+    color: COLORS[Math.floor(Math.random() * COLORS.length)],
+    alpha: Math.random() * 0.45 + 0.1,
+    pulse: Math.random() * Math.PI * 2,
+  }));
 
-  function createParticle() {
-    return {
-      x:     Math.random() * canvas.width,
-      y:     Math.random() * canvas.height,
-      vx:    (Math.random() - 0.5) * 0.4,
-      vy:    (Math.random() - 0.5) * 0.4,
-      r:     Math.random() * 2 + 0.5,
-      color: PARTICLE_COLORS[Math.floor(Math.random() * PARTICLE_COLORS.length)],
-      alpha: Math.random() * 0.5 + 0.1,
-      pulse: Math.random() * Math.PI * 2,
-    };
-  }
+  let frame = 0;
 
   function animate() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+    frame++;
+    const drawConnections = frame % 2 === 0; // skip connections every other frame on mobile
 
-    particles.forEach(p => {
-      p.pulse += 0.02;
-      const alpha = p.alpha * (0.7 + 0.3 * Math.sin(p.pulse));
+    for (let i = 0; i < particles.length; i++) {
+      const p = particles[i];
+      p.pulse += 0.018;
+      const alpha = p.alpha * (0.65 + 0.35 * Math.sin(p.pulse));
 
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
       ctx.fillStyle = `${p.color}${alpha})`;
       ctx.fill();
 
-      // Glow
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.r * 3, 0, Math.PI * 2);
-      ctx.fillStyle = `${p.color}${alpha * 0.15})`;
-      ctx.fill();
-
       p.x += p.vx;
       p.y += p.vy;
-
       if (p.x < 0 || p.x > canvas.width)  p.vx *= -1;
       if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
 
-      // Draw connections
-      particles.forEach(p2 => {
+      if (!drawConnections && isMobile) continue;
+
+      // Connections — only forward pairs to halve the work
+      for (let j = i + 1; j < particles.length; j++) {
+        const p2 = particles[j];
         const dx = p.x - p2.x;
         const dy = p.y - p2.y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 100) {
+        const distSq = dx * dx + dy * dy;
+        if (distSq < CONNECT * CONNECT) {
+          const dist = Math.sqrt(distSq);
           ctx.beginPath();
           ctx.moveTo(p.x, p.y);
           ctx.lineTo(p2.x, p2.y);
-          ctx.strokeStyle = `${p.color}${0.05 * (1 - dist / 100)})`;
-          ctx.lineWidth = 0.5;
+          ctx.strokeStyle = `${p.color}${0.06 * (1 - dist / CONNECT)})`;
+          ctx.lineWidth = 0.4;
           ctx.stroke();
         }
-      });
-    });
+      }
+    }
 
     requestAnimationFrame(animate);
   }
