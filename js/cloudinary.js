@@ -11,7 +11,7 @@
    ============================================================ */
 
 export const CLOUDINARY_CONFIG = {
-  cloudName:    'YOUR_CLOUD_NAME',
+  cloudName:    'di27wnki0',
   uploadPreset: 'velora_unsigned',
 };
 
