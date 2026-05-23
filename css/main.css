@@ -170,6 +170,8 @@ ul, ol {
   position: relative;
   overflow: hidden;
   isolation: isolate;
+  z-index: 1;
+  background: #050510;
 }
 
 @media (min-width: 481px) {
@@ -313,18 +315,10 @@ h1, h2, h3, h4, h5, h6 {
   overflow-x: hidden;
   display: flex;
   flex-direction: column;
-  background: var(--bg-deep);
+  background: #050510;
+  background: var(--bg-deep, #050510);
   z-index: 1;
-  will-change: opacity, transform;
-}
-
-.page.entering {
-  animation: pageEnter 350ms cubic-bezier(0.4, 0, 0.2, 1) both;
-}
-
-.page.leaving {
-  animation: pageLeave 350ms cubic-bezier(0.4, 0, 0.2, 1) both;
-  pointer-events: none;
+  opacity: 1;
 }
 
 .page-content {

@@ -16,39 +16,33 @@ export function registerPage(id, renderFn) {
 
 export function showPage(pageId, data = {}) {
   const app = document.getElementById('app');
-  if (!app) return console.warn('App container not found');
+  if (!app) return;
 
   const renderFn = pages.get(pageId);
-  if (!renderFn) return console.warn(`Page "${pageId}" not found`);
+  if (!renderFn) return;
 
-  // Remove old page after leave animation
+  // Fade out and remove the leaving page
   const leaving = currentPage;
   if (leaving) {
-    leaving.classList.add('leaving');
-    leaving.addEventListener('animationend', () => leaving.remove(), { once: true });
-    // Fallback removal in case animationend doesn't fire
-    setTimeout(() => leaving.remove(), 450);
+    leaving.style.pointerEvents = 'none';
+    leaving.style.transition = 'opacity 0.25s ease';
+    leaving.style.opacity = '0';
+    setTimeout(() => leaving.remove(), 300);
   }
 
-  // Create new page
+  // Create new page — immediately visible, no CSS animation dependency
   const pageEl = document.createElement('div');
-  pageEl.className = 'page entering';
+  pageEl.className = 'page';
   pageEl.id = `page-${pageId}`;
 
   try {
     pageEl.innerHTML = renderFn(data);
   } catch (err) {
-    console.error(`[VELORA] renderFn error for page "${pageId}":`, err);
-    pageEl.innerHTML = `<div style="display:flex;align-items:center;justify-content:center;min-height:100vh;color:#00F5D4;font-family:Outfit,sans-serif">Erro ao carregar página</div>`;
+    console.error(`[VELORA] render error for "${pageId}":`, err);
+    pageEl.innerHTML = `<div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#050510;color:#00F5D4;font-family:Outfit,sans-serif;font-size:1rem">Erro ao carregar página</div>`;
   }
 
   app.appendChild(pageEl);
-
-  // Remove entering class after animation completes
-  pageEl.addEventListener('animationend', () => pageEl.classList.remove('entering'), { once: true });
-  // Fallback: ensure visible even if animationend doesn't fire
-  setTimeout(() => pageEl.classList.remove('entering'), 400);
-
   currentPage = pageEl;
   app.scrollTop = 0;
 
