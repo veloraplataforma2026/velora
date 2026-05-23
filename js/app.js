@@ -360,7 +360,7 @@ function renderRegister() {
           </div>
         </div>
 
-        <div class="mt-xl flex-col gap-sm" id="register-actions">
+        <div class="mt-2xl flex-col gap-sm" id="register-actions">
           <button class="btn btn-primary btn-lg btn-w-full" id="register-next-btn">
             <span class="btn-text">${t('next')}</span>
           </button>
