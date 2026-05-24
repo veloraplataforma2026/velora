@@ -602,3 +602,106 @@ h1, h2, h3, h4, h5, h6 {
   z-index: 0;
   opacity: 0.6;
 }
+
+/* ─── Desktop Layout (≥1024px) ───────────────────────────── */
+@media (min-width: 1024px) {
+  :root {
+    --sidebar-width: 240px;
+  }
+
+  /* App shell: offset by sidebar */
+  #app {
+    max-width: none;
+    width: calc(100vw - var(--sidebar-width));
+    margin-left: var(--sidebar-width);
+    box-shadow: none;
+  }
+
+  /* Bottom nav becomes left sidebar */
+  .bottom-nav {
+    left: 0;
+    right: auto;
+    bottom: 0;
+    top: 0;
+    transform: none;
+    width: var(--sidebar-width);
+    max-width: var(--sidebar-width);
+    height: 100vh;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    padding: 80px 12px 24px;
+    border-top: none;
+    border-right: 1px solid var(--glass-border);
+    gap: 2px;
+    background: rgba(5, 5, 16, 0.97);
+  }
+
+  /* VELORA logo in sidebar */
+  .bottom-nav::before {
+    content: 'VELORA';
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-family: var(--font-display);
+    font-weight: 900;
+    font-size: 1.3rem;
+    background: var(--grad-primary);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    letter-spacing: -0.02em;
+  }
+
+  /* Nav items: horizontal (icon + label) */
+  .nav-item {
+    flex-direction: row;
+    justify-content: flex-start;
+    text-align: left;
+    padding: 11px 16px;
+    font-size: 0.88rem;
+    min-width: unset;
+    width: 100%;
+    border-radius: var(--radius-md);
+    gap: 12px;
+    height: auto;
+  }
+
+  /* Active: background highlight instead of top line */
+  .nav-item.active::before { display: none; }
+  .nav-item.active {
+    background: rgba(0, 245, 212, 0.1);
+    border: 1px solid rgba(0, 245, 212, 0.15);
+    border-radius: var(--radius-md);
+  }
+
+  /* Top header: hide VELORA logo (already in sidebar) */
+  .top-header .logo-text { display: none; }
+
+  /* Content area: wider, centered */
+  .page-content {
+    padding-bottom: var(--space-2xl);
+    max-width: 860px;
+    margin: 0 auto;
+  }
+
+  /* Swipe deck: centered and reasonable width */
+  #swipe-deck {
+    max-width: 440px;
+    margin: 0 auto;
+  }
+
+  /* Remove bottom nav space from page padding */
+  [style*="padding-bottom:100px"],
+  [style*="padding-bottom: 100px"] {
+    padding-bottom: var(--space-2xl) !important;
+  }
+
+  /* Discover grid: more columns on desktop */
+  [style*="grid-template-columns:1fr 1fr"],
+  [style*="grid-template-columns: 1fr 1fr"] {
+    grid-template-columns: repeat(4, 1fr) !important;
+  }
+}
