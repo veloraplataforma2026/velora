@@ -91,9 +91,16 @@ export async function updateUserProfile(uid, data) {
 // ─── Email/Password Login ─────────────────────────────────
 export async function loginWithEmail(email, password) {
   try {
-    const cred = await signInWithEmailAndPassword(auth, email, password);
+    const timeout = new Promise((_, rej) =>
+      setTimeout(() => rej({ code: 'auth/timeout' }), 12000)
+    );
+    const cred = await Promise.race([
+      signInWithEmailAndPassword(auth, email, password),
+      timeout,
+    ]);
     return { success: true, user: cred.user };
   } catch (err) {
+    console.error('[VELORA] Login error:', err.code, err.message);
     return { success: false, error: getAuthError(err.code) };
   }
 }
@@ -179,6 +186,7 @@ function getAuthError(code) {
     'auth/popup-closed-by-user':     'Login cancelado.',
     'auth/operation-not-allowed':    'Cadastro por e-mail não habilitado. Verifique as configurações do Firebase.',
     'auth/configuration-not-found':  'Firebase não configurado corretamente.',
+    'auth/timeout':                  'Tempo limite esgotado. Verifique sua conexão e tente novamente.',
   };
   return errors[code] || `Erro (${code || 'desconhecido'}). Tente novamente.`;
 }
