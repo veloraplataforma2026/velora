@@ -1149,7 +1149,8 @@ async function loadAndShowHome() {
   const uid = VeloraState.currentUser?.uid;
   if (uid) {
     try {
-      const loaded = await loadProfiles(uid);
+      const timeout = new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 4000));
+      const loaded = await Promise.race([loadProfiles(uid), timeout]);
       VeloraState.profiles = loaded.length ? loaded : MOCK_PROFILES;
     } catch {
       VeloraState.profiles = MOCK_PROFILES;
