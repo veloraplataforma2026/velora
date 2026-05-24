@@ -889,7 +889,7 @@ function setupGlobalHandlers() {
       case 'onboarding': showPage('onboarding', data); break;
       case 'login':     showPage('login', data); break;
       case 'register':  showPage('register', data); break;
-      case 'home':      await loadAndShowHome(); break;
+      case 'home':      VeloraState.currentCardIdx = 0; await loadAndShowHome(); break;
       case 'discover':  showPage('discover', data); break;
       case 'feed':      showPage('feed', data); break;
       case 'matches':   showPage('matches', data); break;
@@ -1157,7 +1157,6 @@ async function loadAndShowHome() {
   } else {
     VeloraState.profiles = MOCK_PROFILES;
   }
-  VeloraState.currentCardIdx = 0;
   showPage('home');
 }
 
@@ -1352,9 +1351,10 @@ function initPageHandlers() {
 
     if (pageId === 'home') {
       const topCard = el.querySelector('#top-card');
-      if (topCard && VeloraState.profiles.length > VeloraState.currentCardIdx) {
+      const profiles = VeloraState.profiles.length ? VeloraState.profiles : MOCK_PROFILES;
+      if (topCard && profiles.length > VeloraState.currentCardIdx) {
         const engine = new SwipeEngine(el.querySelector('#swipe-deck'), async (action) => {
-          const profile = VeloraState.profiles[VeloraState.currentCardIdx];
+          const profile = profiles[VeloraState.currentCardIdx];
           VeloraState.currentCardIdx++;
           const uid = VeloraState.currentUser?.uid || 'demo';
 
@@ -1367,7 +1367,7 @@ function initPageHandlers() {
                 setTimeout(() => {
                   showMatchPopup(myPhoto, theirPhoto, profile.displayName,
                     () => window._openChat(result.matchId, profile.uid),
-                    () => loadAndShowHome()
+                    () => { VeloraState.currentCardIdx = 0; loadAndShowHome(); }
                   );
                 }, 400);
               }
@@ -1387,9 +1387,10 @@ function initPageHandlers() {
 
           // Load next card after delay
           setTimeout(() => {
-            if (VeloraState.currentCardIdx < VeloraState.profiles.length) {
+            if (VeloraState.currentCardIdx < profiles.length) {
               loadAndShowHome();
             } else {
+              VeloraState.currentCardIdx = 0;
               const deck = document.getElementById('swipe-deck');
               if (deck) deck.innerHTML = renderNoMoreCards();
               const actions = document.getElementById('swipe-actions');
@@ -1497,6 +1498,7 @@ export async function boot() {
       async (user, profile) => {
         VeloraState.currentUser = { ...user, profile };
         updateSparksDisplay();
+        VeloraState.currentCardIdx = 0;
         await loadAndShowHome().catch(() => showPage('login'));
       },
       () => { /* not logged in — splash timer handles onboarding */ }
