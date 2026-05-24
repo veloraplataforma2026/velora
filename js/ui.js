@@ -14,9 +14,13 @@ export function registerPage(id, renderFn) {
   pages.set(id, renderFn);
 }
 
+const SIDEBAR_PAGES = new Set(['home','discover','feed','matches','profile','settings','store','gallery','chat']);
+
 export function showPage(pageId, data = {}) {
   const app = document.getElementById('app');
   if (!app) return;
+
+  app.classList.toggle('has-sidebar', SIDEBAR_PAGES.has(pageId));
 
   const renderFn = pages.get(pageId);
   if (!renderFn) return;

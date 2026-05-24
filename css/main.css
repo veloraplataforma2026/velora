@@ -609,8 +609,16 @@ h1, h2, h3, h4, h5, h6 {
     --sidebar-width: 240px;
   }
 
-  /* App shell: offset by sidebar */
-  #app {
+  /* Pages without sidebar (login, register, splash, onboarding): centered narrow */
+  #app:not(.has-sidebar) {
+    max-width: 520px;
+    width: 100%;
+    margin: 0 auto;
+    box-shadow: 0 0 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05);
+  }
+
+  /* App shell with sidebar: offset by sidebar width */
+  #app.has-sidebar {
     max-width: none;
     width: calc(100vw - var(--sidebar-width));
     margin-left: var(--sidebar-width);
