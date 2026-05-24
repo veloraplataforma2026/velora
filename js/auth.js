@@ -31,7 +31,12 @@ const googleProvider = new GoogleAuthProvider();
 export function initAuthObserver(onLoggedIn, onLoggedOut) {
   return onAuthStateChanged(auth, async (user) => {
     if (user) {
-      const profile = await getUserProfile(user.uid);
+      let profile = null;
+      try {
+        profile = await getUserProfile(user.uid);
+      } catch (err) {
+        console.warn('[VELORA] Profile fetch failed (offline?):', err.message);
+      }
       VeloraState.currentUser = { ...user, profile };
       onLoggedIn(user, profile);
     } else {
@@ -126,13 +131,18 @@ export async function registerWithEmail(email, password, profileData, photoFile 
 export async function loginWithGoogle() {
   try {
     const cred = await signInWithPopup(auth, googleProvider);
-    const profile = await getUserProfile(cred.user.uid);
-    if (!profile) {
-      await createUserProfile(cred.user.uid, {
-        displayName: cred.user.displayName,
-        email:       cred.user.email,
-        photoURL:    cred.user.photoURL,
-      });
+    let profile = null;
+    try {
+      profile = await getUserProfile(cred.user.uid);
+      if (!profile) {
+        await createUserProfile(cred.user.uid, {
+          displayName: cred.user.displayName,
+          email:       cred.user.email,
+          photoURL:    cred.user.photoURL,
+        });
+      }
+    } catch (firestoreErr) {
+      console.warn('[VELORA] Firestore unavailable on Google login:', firestoreErr.message);
     }
     return { success: true, user: cred.user, isNew: !profile };
   } catch (err) {
