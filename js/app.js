@@ -660,75 +660,86 @@ function renderProfilePage() {
 
   return `
     ${renderTopHeader(sparks)}
-    <div class="page-content" style="padding:0 0 100px">
+    <div class="page-content" style="padding:0;padding-bottom:48px">
+
       <!-- Cover -->
-      <div style="height:160px;background:linear-gradient(135deg,var(--accent),var(--secondary));position:relative">
-        <div style="position:absolute;bottom:-60px;left:var(--space-lg)">
-          <div class="avatar avatar-xl avatar-ring-primary avatar-online" style="background:var(--bg-surface);overflow:hidden;border:4px solid var(--bg-deep)">
+      <div class="profile-cover-section" style="height:180px;background:linear-gradient(135deg,var(--accent),var(--secondary));position:relative">
+        <div class="profile-avatar-wrap" style="position:absolute;bottom:-56px;left:var(--space-xl)">
+          <div class="avatar avatar-xl avatar-ring-primary" style="background:var(--bg-surface);overflow:hidden;border:4px solid var(--bg-deep)">
             <img src="${profile?.photoURL || defaultAvatar(user?.displayName || '?')}" style="width:100%;height:100%;object-fit:cover" alt="Profile">
           </div>
         </div>
-        <button class="btn btn-ghost btn-sm" style="position:absolute;bottom:12px;right:16px" onclick="window._editProfile()">
+        <button class="btn btn-ghost btn-sm" style="position:absolute;bottom:14px;right:var(--space-xl)" onclick="window._editProfile()">
           ${svgIcon('settings', 16)} ${t('editProfile')}
         </button>
       </div>
 
-      <div style="padding:70px var(--space-lg) var(--space-lg)">
-        <div class="flex-between mb-sm">
-          <div>
-            <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:800">
+      <!-- Two-column grid (desktop) / single column (mobile) -->
+      <div class="profile-grid" style="padding:70px var(--space-lg) var(--space-xl)">
+
+        <!-- Left column: identity + score + level + sparks -->
+        <div class="profile-left-col">
+          <div style="margin-bottom:var(--space-lg)">
+            <h2 style="font-family:var(--font-display);font-size:1.6rem;font-weight:800;line-height:1.2">
               ${profile?.displayName || user?.displayName || 'Usuário'}
-              ${profile?.verified ? ' <span class="badge badge-verified">✓ Verificado</span>' : ''}
+              ${profile?.verified ? '<span class="badge badge-verified" style="font-size:0.7rem;vertical-align:middle"> ✓</span>' : ''}
             </h2>
-            <p style="color:var(--text-muted);font-size:0.85rem">${profile?.age ? `${profile.age} anos` : ''} ${profile?.bio ? '• ' + profile.bio.slice(0, 40) + '...' : ''}</p>
+            <p style="color:var(--text-muted);font-size:0.88rem;margin-top:4px">
+              ${profile?.age ? `${profile.age} anos` : ''} ${profile?.bio ? '· ' + profile.bio.slice(0, 50) : ''}
+            </p>
+            <div style="margin-top:var(--space-md)">${veloraScoreRing(profile?.veloraScore || 75, 72)}</div>
           </div>
-          ${veloraScoreRing(profile?.veloraScore || 75)}
-        </div>
 
-        <!-- Level & XP -->
-        <div class="glass" style="border-radius:var(--radius-lg);padding:var(--space-md);margin-bottom:var(--space-lg)">
-          <div class="flex-between mb-sm">
-            <div style="font-family:var(--font-display);font-weight:700;font-size:0.9rem">${t('level')} ${profile?.level || 1} — ${getLevelName(profile?.level || 1)}</div>
-            <div style="font-size:0.82rem;color:var(--text-muted)">${profile?.xp || 0} ${t('xp')}</div>
+          <!-- Level & XP -->
+          <div class="glass" style="border-radius:var(--radius-lg);padding:var(--space-lg);margin-bottom:var(--space-md)">
+            <div class="flex-between mb-sm">
+              <div style="font-family:var(--font-display);font-weight:700;font-size:0.9rem">${t('level')} ${profile?.level || 1} — ${getLevelName(profile?.level || 1)}</div>
+              <div style="font-size:0.8rem;color:var(--text-muted)">${profile?.xp || 0} XP</div>
+            </div>
+            <div class="xp-bar"><div class="xp-fill" style="width:${Math.min((profile?.xp || 0) % 100, 100)}%"></div></div>
           </div>
-          <div class="xp-bar"><div class="xp-fill" style="width:${Math.min((profile?.xp || 0) % 100, 100)}%"></div></div>
+
+          <!-- Sparks -->
+          <div class="glass" style="border-radius:var(--radius-lg);padding:var(--space-lg);text-align:center;cursor:pointer" onclick="window._navigate('store')">
+            <div style="font-size:1.8rem;margin-bottom:4px">✨</div>
+            <div style="font-family:var(--font-display);font-weight:900;font-size:1.8rem;color:var(--gold)" data-sparks-balance>${sparks}</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-top:4px">Sparks · ${t('buySparks')}</div>
+          </div>
         </div>
 
-        <!-- Sparks balance -->
-        <div class="glass" style="border-radius:var(--radius-lg);padding:var(--space-lg);margin-bottom:var(--space-lg);text-align:center;cursor:pointer" onclick="window._navigate('store')">
-          <div style="font-size:2rem;margin-bottom:4px">✨</div>
-          <div style="font-family:var(--font-display);font-weight:900;font-size:2rem;color:var(--gold)" data-sparks-balance>${sparks}</div>
-          <div style="font-size:0.8rem;color:var(--text-muted)">Sparks • ${t('buySparks')}</div>
-        </div>
+        <!-- Right column: interests + gallery + actions -->
+        <div class="profile-right-col">
+          ${profile?.interests?.length ? `
+            <div style="margin-bottom:var(--space-lg)">
+              <div class="section-title" style="margin-bottom:var(--space-sm)">${t('yourInterests')}</div>
+              <div style="display:flex;flex-wrap:wrap;gap:8px">
+                ${(profile.interests || []).map(i => `<span class="tag active">${i}</span>`).join('')}
+              </div>
+            </div>
+          ` : ''}
 
-        <!-- Interests -->
-        ${profile?.interests?.length ? `
-          <div class="mb-lg">
-            <div class="section-title mb-sm">${t('yourInterests')}</div>
-            <div style="display:flex;flex-wrap:wrap;gap:8px">
-              ${(profile.interests || []).map(i => `<span class="tag active">${i}</span>`).join('')}
+          <!-- Gallery preview -->
+          <div style="margin-bottom:var(--space-lg)">
+            <div class="section-header">
+              <div class="section-title">${t('gallery')}</div>
+              <div class="section-link" onclick="window._navigate('gallery')">${svgIcon('plus', 14)} Adicionar</div>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:4px;border-radius:var(--radius-md);overflow:hidden;margin-top:var(--space-sm)">
+              <div style="aspect-ratio:1;background:var(--bg-surface);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.5rem" onclick="window._navigate('gallery')">📷</div>
             </div>
           </div>
-        ` : ''}
 
-        <!-- Gallery preview -->
-        <div class="mb-lg">
-          <div class="section-header">
-            <div class="section-title">${t('gallery')}</div>
-            <div class="section-link" onclick="window._navigate('gallery')">${svgIcon('plus', 14)} Adicionar</div>
-          </div>
-          <div id="profile-gallery-preview" style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;border-radius:var(--radius-md);overflow:hidden">
-            <div style="aspect-ratio:1;background:var(--bg-surface);display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:1.5rem" onclick="window._navigate('gallery')">📷</div>
+          <!-- Actions -->
+          <div style="display:flex;flex-direction:column;gap:var(--space-sm)">
+            <button class="btn btn-ghost" onclick="window._navigate('settings')" style="justify-content:flex-start">
+              ${svgIcon('settings', 18)} ${t('settings')}
+            </button>
+            <button class="btn btn-ghost" style="color:var(--danger);justify-content:flex-start" onclick="window._logout()">
+              🚪 ${t('logout')}
+            </button>
           </div>
         </div>
 
-        <!-- Settings link -->
-        <button class="btn btn-ghost btn-w-full" onclick="window._navigate('settings')">
-          ${svgIcon('settings', 18)} ${t('settings')}
-        </button>
-        <button class="btn btn-ghost btn-w-full mt-sm" style="color:var(--danger)" onclick="window._logout()">
-          🚪 ${t('logout')}
-        </button>
       </div>
     </div>
     ${renderBottomNav('profile')}

@@ -605,11 +605,9 @@ h1, h2, h3, h4, h5, h6 {
 
 /* ─── Desktop Layout (≥1024px) ───────────────────────────── */
 @media (min-width: 1024px) {
-  :root {
-    --sidebar-width: 240px;
-  }
+  :root { --sidebar-width: 240px; }
 
-  /* Pages without sidebar (login, register, splash, onboarding): centered narrow */
+  /* Auth pages (login/register/splash): centered narrow */
   #app:not(.has-sidebar) {
     max-width: 520px;
     width: 100%;
@@ -617,7 +615,7 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: 0 0 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05);
   }
 
-  /* App shell with sidebar: offset by sidebar width */
+  /* App with sidebar: fill remainder */
   #app.has-sidebar {
     max-width: none;
     width: calc(100vw - var(--sidebar-width));
@@ -625,12 +623,9 @@ h1, h2, h3, h4, h5, h6 {
     box-shadow: none;
   }
 
-  /* Bottom nav becomes left sidebar */
+  /* ── Sidebar nav ── */
   .bottom-nav {
-    left: 0;
-    right: auto;
-    bottom: 0;
-    top: 0;
+    left: 0; right: auto; bottom: 0; top: 0;
     transform: none;
     width: var(--sidebar-width);
     max-width: var(--sidebar-width);
@@ -638,32 +633,26 @@ h1, h2, h3, h4, h5, h6 {
     flex-direction: column;
     justify-content: flex-start;
     align-items: stretch;
-    padding: 80px 12px 24px;
+    padding: 76px 12px 24px;
     border-top: none;
     border-right: 1px solid var(--glass-border);
     gap: 2px;
-    background: rgba(5, 5, 16, 0.97);
+    background: rgba(5,5,16,0.97);
+    backdrop-filter: blur(20px);
   }
-
-  /* VELORA logo in sidebar */
   .bottom-nav::before {
     content: 'VELORA';
     position: absolute;
-    top: 20px;
-    left: 0;
-    right: 0;
+    top: 22px; left: 0; right: 0;
     text-align: center;
     font-family: var(--font-display);
-    font-weight: 900;
-    font-size: 1.3rem;
+    font-weight: 900; font-size: 1.25rem;
     background: var(--grad-primary);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
     letter-spacing: -0.02em;
   }
-
-  /* Nav items: horizontal (icon + label) */
   .nav-item {
     flex-direction: row;
     justify-content: flex-start;
@@ -676,40 +665,75 @@ h1, h2, h3, h4, h5, h6 {
     gap: 12px;
     height: auto;
   }
-
-  /* Active: background highlight instead of top line */
   .nav-item.active::before { display: none; }
   .nav-item.active {
-    background: rgba(0, 245, 212, 0.1);
-    border: 1px solid rgba(0, 245, 212, 0.15);
-    border-radius: var(--radius-md);
+    background: rgba(0,245,212,0.1);
+    border: 1px solid rgba(0,245,212,0.15);
   }
 
-  /* Top header: hide VELORA logo (already in sidebar) */
+  /* ── Top header ── */
   .top-header .logo-text { display: none; }
+  .top-header { justify-content: flex-end; }
 
-  /* Content area: wider, centered */
+  /* ── Content widths ── */
   .page-content {
-    padding-bottom: var(--space-2xl);
-    max-width: 860px;
+    max-width: 960px;
     margin: 0 auto;
-  }
-
-  /* Swipe deck: centered and reasonable width */
-  #swipe-deck {
-    max-width: 440px;
-    margin: 0 auto;
-  }
-
-  /* Remove bottom nav space from page padding */
-  [style*="padding-bottom:100px"],
-  [style*="padding-bottom: 100px"] {
     padding-bottom: var(--space-2xl) !important;
   }
 
-  /* Discover grid: more columns on desktop */
+  /* Remove inline 100px bottom padding from nav */
+  #app.has-sidebar .page > div[style*="100px"] {
+    padding-bottom: var(--space-2xl) !important;
+  }
+
+  /* ── Home / Swipe ── */
+  #swipe-deck { max-width: 420px; margin: 0 auto; }
+  .swipe-actions { padding: var(--space-lg) 0; }
+
+  /* ── Discover grid: 4 columns ── */
   [style*="grid-template-columns:1fr 1fr"],
   [style*="grid-template-columns: 1fr 1fr"] {
     grid-template-columns: repeat(4, 1fr) !important;
   }
+
+  /* ── Profile page two-column layout ── */
+  .profile-cover-section { height: 220px !important; }
+  .profile-grid {
+    display: grid !important;
+    grid-template-columns: 260px 1fr;
+    gap: var(--space-2xl);
+    align-items: start;
+    padding: var(--space-2xl) var(--space-2xl) var(--space-3xl) !important;
+  }
+  .profile-avatar-wrap {
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    margin-top: -60px;
+  }
+
+  /* ── Buttons: auto width in desktop pages ── */
+  #app.has-sidebar .btn-w-full {
+    width: auto;
+    min-width: 160px;
+    max-width: 300px;
+  }
+  #app.has-sidebar .btn-lg {
+    padding: 14px 32px;
+  }
+
+  /* ── Card/glass wider ── */
+  #app.has-sidebar .glass {
+    padding: var(--space-lg) var(--space-xl);
+  }
+
+  /* ── Feed: center posts ── */
+  .post-card { max-width: 680px; margin-left: auto; margin-right: auto; }
+
+  /* ── Match list items wider ── */
+  .match-item { max-width: 680px; margin-left: auto; margin-right: auto; }
+
+  /* ── Settings: max readable width ── */
+  .settings-section { max-width: 680px; margin-left: auto; margin-right: auto; }
 }
