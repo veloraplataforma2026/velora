@@ -1,16 +1,16 @@
-/* ============================================================
+﻿/* ============================================================
    VELORA — Chat Module
    Real-time messaging via Firestore onSnapshot,
    typing indicators, message reactions
    ============================================================ */
 
-import { db } from './firebase-config.js';
+import { db } from './firebase-config.js?v=7';
 import {
   collection, doc, addDoc, onSnapshot,
   query, orderBy, serverTimestamp, setDoc, getDoc,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { VeloraState } from './app.js';
-import { svgIcon, formatDate } from './ui.js';
+import { VeloraState } from './app.js?v=7';
+import { svgIcon, formatDate } from './ui.js?v=7';
 
 let unsubscribeChat = null;
 let typingTimeout = null;
@@ -27,33 +27,28 @@ export function subscribeToChat(conversationId, callback) {
   return () => { if (unsubscribeChat) unsubscribeChat(); };
 }
 
+const to = (ms = 8000) => new Promise((_, r) => setTimeout(() => r(new Error('Timeout ao enviar mensagem.')), ms));
+
 // ─── Send Message ─────────────────────────────────────────
 export async function sendMessage(conversationId, text, senderId) {
   if (!text.trim()) return;
   const messagesRef = collection(db, 'conversations', conversationId, 'messages');
-  await addDoc(messagesRef, {
-    text:      text.trim(),
-    senderId,
-    createdAt: serverTimestamp(),
-    read:      false,
-    reactions: {},
-  });
-
-  // Update conversation preview
+  await Promise.race([
+    addDoc(messagesRef, { text: text.trim(), senderId, createdAt: serverTimestamp(), read: false, reactions: {} }),
+    to(),
+  ]);
   const convRef = doc(db, 'conversations', conversationId);
-  await setDoc(convRef, {
-    lastMessage: text.trim(),
-    lastAt:      serverTimestamp(),
-    lastSender:  senderId,
-  }, { merge: true });
+  await Promise.race([
+    setDoc(convRef, { lastMessage: text.trim(), lastAt: serverTimestamp(), lastSender: senderId }, { merge: true }),
+    to(),
+  ]);
 }
 
 // ─── Set Typing State ─────────────────────────────────────
 export async function setTyping(conversationId, uid, isTyping) {
   const convRef = doc(db, 'conversations', conversationId);
-  await setDoc(convRef, {
-    [`typing_${uid}`]: isTyping,
-  }, { merge: true });
+  // Fire-and-forget — typing indicator is non-critical
+  setDoc(convRef, { [`typing_${uid}`]: isTyping }, { merge: true }).catch(() => {});
 }
 
 // ─── Render Messages ──────────────────────────────────────

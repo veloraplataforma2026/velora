@@ -1,10 +1,10 @@
-/* ============================================================
+﻿/* ============================================================
    VELORA — UI Utilities
    Toast notifications, page transitions, modal system,
    particle system, confetti, and common UI helpers
    ============================================================ */
 
-import { t } from './i18n.js';
+import { t } from './i18n.js?v=7';
 
 // ─── Page Router ──────────────────────────────────────────
 const pages = new Map();
@@ -83,13 +83,13 @@ export function showToast(message, type = 'info', duration = 3000) {
 
 // ─── Modal System ─────────────────────────────────────────
 export function showModal(content, options = {}) {
-  const { centered = false, onClose } = options;
+  const { centered = false, fullscreen = false, wide = false, onClose } = options;
   const overlay = document.createElement('div');
-  overlay.className = `modal-overlay${centered ? ' modal-center' : ''}`;
+  overlay.className = `modal-overlay${centered ? ' modal-center' : ''}${fullscreen ? ' modal-fullscreen' : ''}`;
 
   const modal = document.createElement('div');
-  modal.className = `modal${centered ? ' modal-rounded' : ''}`;
-  if (!centered) {
+  modal.className = `modal${centered ? ' modal-rounded' : ''}${wide ? ' modal-wide' : ''}`;
+  if (!centered && !fullscreen) {
     modal.innerHTML = `<div class="modal-handle"></div>`;
   }
   modal.innerHTML += content;
@@ -238,8 +238,10 @@ export function initParticles() {
   }));
 
   let frame = 0;
+  let rafId = null;
 
   function animate() {
+    if (document.hidden) { rafId = null; return; }
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     frame++;
     const drawConnections = frame % 2 === 0; // skip connections every other frame on mobile
@@ -279,8 +281,12 @@ export function initParticles() {
       }
     }
 
-    requestAnimationFrame(animate);
+    rafId = requestAnimationFrame(animate);
   }
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && !rafId) animate();
+  });
 
   animate();
 }

@@ -1,37 +1,49 @@
-/* ============================================================
+﻿/* ============================================================
    VELORA — Currency (SPARKS) Module
    Balance management, purchase packages, transaction history
    ============================================================ */
 
-import { db } from './firebase-config.js';
+import { db } from './firebase-config.js?v=7';
 import {
   doc, getDoc, updateDoc, addDoc, collection,
-  serverTimestamp, query, where, orderBy, getDocs, increment,
+  serverTimestamp, query, where, getDocs, increment, limit,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { VeloraState } from './app.js';
-import { showToast } from './ui.js';
-import { t } from './i18n.js';
+
+const fsTimeout = (ms = 10000) => new Promise((_, r) => setTimeout(() => r(new Error('Timeout na operação.')), ms));
+import { VeloraState } from './app.js?v=7';
+import { showToast } from './ui.js?v=7';
+import { t } from './i18n.js?v=7';
 
 // ─── Packages ─────────────────────────────────────────────
+// stripeLink: Cole o URL do Payment Link gerado no painel do Stripe.
+//   Stripe Dashboard → Payment Links → Create Link
+//   Em "After payment", configure a URL de confirmação de cada pacote:
+//     starter → https://velora-social.web.app?payment=success&pkg=starter
+//     popular → https://velora-social.web.app?payment=success&pkg=popular
+//     vip     → https://velora-social.web.app?payment=success&pkg=vip
 export const SPARKS_PACKAGES = [
-  { id: 'starter', sparks: 100,  priceReal: 9.90,  priceUSD: 1.99,  label: 'Starter',  emoji: '✨' },
-  { id: 'popular', sparks: 500,  priceReal: 39.90, priceUSD: 7.99,  label: 'Popular',  emoji: '⚡', popular: true },
-  { id: 'vip',     sparks: 1500, priceReal: 99.90, priceUSD: 19.99, label: 'VIP',       emoji: '💎', bestValue: true },
+  { id: 'starter', sparks: 100,  priceReal: 9.90,  priceUSD: 1.99,  label: 'Starter',  emoji: '✨', stripeLink: 'https://buy.stripe.com/test_8x2eVedungki0XSeJed7q02' },
+  { id: 'popular', sparks: 500,  priceReal: 39.90, priceUSD: 7.99,  label: 'Popular',  emoji: '⚡', popular: true,   stripeLink: 'https://buy.stripe.com/test_eVqbJ2bmfd869uoasYd7q01' },
+  { id: 'vip',     sparks: 1500, priceReal: 99.90, priceUSD: 19.99, label: 'VIP',       emoji: '💎', bestValue: true, stripeLink: 'https://buy.stripe.com/test_bJeaEYgGzecagWQ7gMd7q00' },
 ];
+
+export function isStripeConfigured() {
+  return SPARKS_PACKAGES.some(p => p.stripeLink);
+}
 
 // Costs for actions
 export const SPARKS_COSTS = {
-  unlockPhoto:  5,
-  superLike:    10,
-  boost1h:      50,
-  feedHighlight: 20,
-  rewind:       3,
+  unlockPhoto:    5,
+  superLike:      10,
+  boost1h:        50,
+  feedHighlight:  20,
+  rewind:         3,
+  directMessage:  15,
 };
 
 // ─── Get Balance ──────────────────────────────────────────
 export async function getBalance(uid) {
-  const userRef = doc(db, 'users', uid);
-  const snap = await getDoc(userRef);
+  const snap = await Promise.race([getDoc(doc(db, 'users', uid)), fsTimeout()]);
   return snap.exists() ? (snap.data().sparks || 0) : 0;
 }
 
@@ -43,41 +55,26 @@ export async function hasSparks(uid, amount) {
 
 // ─── Deduct Sparks ────────────────────────────────────────
 export async function deductSparks(uid, amount, description = '') {
-  const userRef = doc(db, 'users', uid);
-  await updateDoc(userRef, { sparks: increment(-amount) });
-
-  // Log transaction
-  await addDoc(collection(db, 'transactions'), {
-    userId:      uid,
-    type:        'debit',
-    amount:      -amount,
-    description,
-    timestamp:   serverTimestamp(),
-  });
-
-  // Update local state
-  if (VeloraState.currentUser?.profile) {
-    VeloraState.currentUser.profile.sparks -= amount;
+  const balance = await getBalance(uid);
+  if (balance < amount) {
+    showToast(`Sparks insuficientes. Você tem ${balance} ✨`, 'error');
+    throw new Error('Saldo insuficiente');
   }
+  await Promise.race([updateDoc(doc(db, 'users', uid), { sparks: increment(-amount) }), fsTimeout()]);
+  addDoc(collection(db, 'transactions'), {
+    userId: uid, type: 'debit', amount: -amount, description, timestamp: serverTimestamp(),
+  }).catch(() => {});
+  if (VeloraState.currentUser?.profile) VeloraState.currentUser.profile.sparks -= amount;
   updateSparksDisplay();
 }
 
 // ─── Add Sparks ───────────────────────────────────────────
 export async function addSparks(uid, amount, description = '') {
-  const userRef = doc(db, 'users', uid);
-  await updateDoc(userRef, { sparks: increment(amount) });
-
-  await addDoc(collection(db, 'transactions'), {
-    userId:      uid,
-    type:        'credit',
-    amount,
-    description,
-    timestamp:   serverTimestamp(),
-  });
-
-  if (VeloraState.currentUser?.profile) {
-    VeloraState.currentUser.profile.sparks += amount;
-  }
+  await Promise.race([updateDoc(doc(db, 'users', uid), { sparks: increment(amount) }), fsTimeout()]);
+  addDoc(collection(db, 'transactions'), {
+    userId: uid, type: 'credit', amount, description, timestamp: serverTimestamp(),
+  }).catch(() => {});
+  if (VeloraState.currentUser?.profile) VeloraState.currentUser.profile.sparks += amount;
   updateSparksDisplay();
   showToast(`+${amount} Sparks adicionados! ✨`, 'gold');
 }
@@ -86,22 +83,18 @@ export async function addSparks(uid, amount, description = '') {
 export async function purchaseSparks(uid, packageId) {
   const pkg = SPARKS_PACKAGES.find(p => p.id === packageId);
   if (!pkg) return;
-
-  // In production: trigger Stripe payment here
-  // For now, simulate success
   await addSparks(uid, pkg.sparks, `Compra: Pacote ${pkg.label}`);
   showToast(`${pkg.sparks} ✨ Sparks adicionados!`, 'gold');
 }
 
 // ─── Get Transaction History ──────────────────────────────
+// orderBy removed — sorts in JS to avoid composite index requirement
 export async function getTransactions(uid, limitCount = 20) {
-  const q = query(
-    collection(db, 'transactions'),
-    where('userId', '==', uid),
-    orderBy('timestamp', 'desc')
-  );
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() })).slice(0, limitCount);
+  const q = query(collection(db, 'transactions'), where('userId', '==', uid), limit(limitCount));
+  const snap = await Promise.race([getDocs(q), fsTimeout()]);
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
 }
 
 // ─── Update UI Display ────────────────────────────────────
@@ -114,7 +107,7 @@ export function updateSparksDisplay() {
 // ─── Render Store Page ────────────────────────────────────
 export function renderStoreHTML(balance) {
   return `
-    <div class="top-header">
+    <div class="top-header" style="justify-content:space-between">
       <button class="btn-icon btn-ghost" onclick="window._navBack()">
         <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
       </button>
@@ -130,6 +123,10 @@ export function renderStoreHTML(balance) {
       </div>
 
       <p class="text-muted text-sm mb-lg" style="text-align:center">${t('storeDesc')}</p>
+      ${!isStripeConfigured() ? `
+        <div style="background:rgba(247,201,72,0.08);border:1px solid rgba(247,201,72,0.3);border-radius:var(--radius-md);padding:var(--space-md);margin-bottom:var(--space-lg);text-align:center;font-size:0.82rem;color:var(--gold)">
+          ⚡ Modo demonstração — pagamentos simulados. Configure os links do Stripe para ativar pagamentos reais.
+        </div>` : ''}
 
       <div class="flex-col gap-md mb-xl">
         ${SPARKS_PACKAGES.map(pkg => `
@@ -141,7 +138,7 @@ export function renderStoreHTML(balance) {
             </div>
             <div>
               <div class="sparks-price">R$ ${pkg.priceReal.toFixed(2)}</div>
-              <div style="font-size:0.75rem;color:var(--text-muted);text-align:right">US$ ${pkg.priceUSD}</div>
+              <div style="font-size:0.75rem;color:${pkg.stripeLink ? 'var(--success)' : 'var(--text-muted)'};text-align:right">${pkg.stripeLink ? '💳 Stripe' : 'Demo'}</div>
             </div>
             ${pkg.popular ? `<div class="sparks-package-badge"><span class="badge badge-gold">${t('popular')}</span></div>` : ''}
             ${pkg.bestValue ? `<div class="sparks-package-badge"><span class="badge badge-primary">${t('bestValue')}</span></div>` : ''}
@@ -166,11 +163,12 @@ export function renderStoreHTML(balance) {
 
 function getActionLabel(action) {
   const labels = {
-    unlockPhoto:   '🔓 Desbloquear foto',
-    superLike:     '⭐ Super Like',
-    boost1h:       '🚀 Boost de perfil (1h)',
-    feedHighlight: '📌 Destaque no Feed',
-    rewind:        '↩️ Desfazer swipe',
+    unlockPhoto:    '🔓 Desbloquear foto',
+    superLike:      '⭐ Super Like',
+    boost1h:        '🚀 Boost de perfil (1h)',
+    feedHighlight:  '📌 Destaque no Feed',
+    rewind:         '↩️ Desfazer swipe',
+    directMessage:  '💬 Mensagem direta (sem match)',
   };
   return labels[action] || action;
 }

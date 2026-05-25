@@ -1,49 +1,55 @@
-/* ============================================================
+﻿/* ============================================================
    VELORA — Swipe & Match System
    Touch/mouse drag cards, like/pass/super-like,
    Firebase match creation, real-time match listener,
    unmatch functionality
    ============================================================ */
 
-import { db } from './firebase-config.js';
+import { db } from './firebase-config.js?v=7';
 import {
   collection, doc, setDoc, getDoc, getDocs,
-  query, where, onSnapshot, deleteDoc,
-  serverTimestamp, orderBy, limit,
+  query, where, onSnapshot,
+  serverTimestamp, limit,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { VeloraState } from './app.js';
-import { showMatchPopup, showToast, defaultAvatar } from './ui.js';
-import { t } from './i18n.js';
+import { showToast } from './ui.js?v=7';
 
 // ─── Swipe Card Engine ────────────────────────────────────
 export class SwipeEngine {
   constructor(container, onSwipe) {
-    this.container = container;
-    this.onSwipe   = onSwipe;
-    this.card      = null;
-    this.startX    = 0;
-    this.startY    = 0;
-    this.currentX  = 0;
-    this.currentY  = 0;
+    this.container  = container;
+    this.onSwipe    = onSwipe;
+    this.card       = null;
+    this.startX     = 0;
+    this.startY     = 0;
+    this.currentX   = 0;
+    this.currentY   = 0;
     this.isDragging = false;
     this.THRESHOLD  = 80;
+    // Store bound references so detach() removes the correct listeners
+    this._boundStart = this.onStart.bind(this);
+    this._boundMove  = this.onMove.bind(this);
+    this._boundEnd   = this.onEnd.bind(this);
   }
 
   attach(cardEl) {
     this.card = cardEl;
-    this.card.addEventListener('mousedown',  this.onStart.bind(this));
-    this.card.addEventListener('touchstart', this.onStart.bind(this), { passive: true });
-    document.addEventListener('mousemove',   this.onMove.bind(this));
-    document.addEventListener('touchmove',   this.onMove.bind(this), { passive: false });
-    document.addEventListener('mouseup',     this.onEnd.bind(this));
-    document.addEventListener('touchend',    this.onEnd.bind(this));
+    this.card.addEventListener('mousedown',  this._boundStart);
+    this.card.addEventListener('touchstart', this._boundStart, { passive: true });
+    document.addEventListener('mousemove',   this._boundMove);
+    document.addEventListener('touchmove',   this._boundMove, { passive: false });
+    document.addEventListener('mouseup',     this._boundEnd);
+    document.addEventListener('touchend',    this._boundEnd);
   }
 
   detach() {
-    document.removeEventListener('mousemove', this.onMove.bind(this));
-    document.removeEventListener('touchmove', this.onMove.bind(this));
-    document.removeEventListener('mouseup',   this.onEnd.bind(this));
-    document.removeEventListener('touchend',  this.onEnd.bind(this));
+    document.removeEventListener('mousemove', this._boundMove);
+    document.removeEventListener('touchmove', this._boundMove);
+    document.removeEventListener('mouseup',   this._boundEnd);
+    document.removeEventListener('touchend',  this._boundEnd);
+    if (this.card) {
+      this.card.removeEventListener('mousedown',  this._boundStart);
+      this.card.removeEventListener('touchstart', this._boundStart);
+    }
   }
 
   getCoords(e) {
@@ -122,17 +128,17 @@ export class SwipeEngine {
   triggerSuperLike() { this.flyOut('up');    this.onSwipe?.('superlike'); }
 }
 
+const swipeTimeout = (ms = 10000) => new Promise((_, r) => setTimeout(() => r(new Error('Timeout na operação.')), ms));
+
 // ─── Load Potential Matches ───────────────────────────────
 export async function loadProfiles(currentUid) {
-  // Get profiles user already swiped
   const swipedRef = collection(db, 'swipes', currentUid, 'actions');
-  const swipedSnap = await getDocs(swipedRef);
+  const swipedSnap = await Promise.race([getDocs(swipedRef), swipeTimeout()]);
   const swipedIds = new Set(swipedSnap.docs.map(d => d.id));
-  swipedIds.add(currentUid); // exclude self
+  swipedIds.add(currentUid);
 
-  // Get all users (in production: add geo-query + filters)
   const usersRef = collection(db, 'users');
-  const snap = await getDocs(query(usersRef, limit(50)));
+  const snap = await Promise.race([getDocs(query(usersRef, limit(50))), swipeTimeout()]);
 
   return snap.docs
     .map(d => ({ uid: d.id, ...d.data() }))
@@ -141,43 +147,33 @@ export async function loadProfiles(currentUid) {
 
 // ─── Record Swipe & Check Match ───────────────────────────
 export async function recordSwipe(currentUid, targetUid, action) {
-  // Save swipe
   const swipeRef = doc(db, 'swipes', currentUid, 'actions', targetUid);
-  await setDoc(swipeRef, {
-    action,
-    timestamp: serverTimestamp(),
-  });
+  await Promise.race([setDoc(swipeRef, { action, timestamp: serverTimestamp() }), swipeTimeout()]);
 
   if (action === 'pass') return { matched: false };
 
-  // Check if target already liked current user
   const reverseRef = doc(db, 'swipes', targetUid, 'actions', currentUid);
-  const reverseSnap = await getDoc(reverseRef);
+  const reverseSnap = await Promise.race([getDoc(reverseRef), swipeTimeout()]);
 
   if (reverseSnap.exists() && ['like', 'superlike'].includes(reverseSnap.data().action)) {
-    // It's a match!
     const matchId = [currentUid, targetUid].sort().join('_');
-    const matchRef = doc(db, 'matches', matchId);
-    await setDoc(matchRef, {
-      user1:     currentUid,
-      user2:     targetUid,
-      users:     [currentUid, targetUid],
-      action1:   action,
-      action2:   reverseSnap.data().action,
-      createdAt: serverTimestamp(),
-      active:    true,
-    });
-
-    // Create conversation
-    const convRef = doc(db, 'conversations', matchId);
-    await setDoc(convRef, {
-      participants: [currentUid, targetUid],
-      matchId,
-      lastMessage:  null,
-      lastAt:       serverTimestamp(),
-      createdAt:    serverTimestamp(),
-    });
-
+    await Promise.race([
+      setDoc(doc(db, 'matches', matchId), {
+        user1: currentUid, user2: targetUid,
+        users: [currentUid, targetUid],
+        action1: action, action2: reverseSnap.data().action,
+        createdAt: serverTimestamp(), active: true,
+      }),
+      swipeTimeout(),
+    ]);
+    await Promise.race([
+      setDoc(doc(db, 'conversations', matchId), {
+        participants: [currentUid, targetUid],
+        matchId, lastMessage: null,
+        lastAt: serverTimestamp(), createdAt: serverTimestamp(),
+      }),
+      swipeTimeout(),
+    ]);
     return { matched: true, matchId };
   }
 
@@ -185,87 +181,31 @@ export async function recordSwipe(currentUid, targetUid, action) {
 }
 
 // ─── Get My Matches ───────────────────────────────────────
+// Uses only array-contains to avoid composite index requirement — filters in JS
 export function subscribeToMatches(uid, callback) {
-  const q = query(
-    collection(db, 'matches'),
-    where('users', 'array-contains', uid),
-    where('active', '==', true),
-    orderBy('createdAt', 'desc')
+  const q = query(collection(db, 'matches'), where('users', 'array-contains', uid));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const matches = snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(m => m.active !== false)
+        .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+      callback(matches);
+    },
+    () => callback([]),
   );
-  return onSnapshot(q, (snap) => {
-    const matches = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    callback(matches);
-  });
 }
 
 // ─── Unmatch ──────────────────────────────────────────────
 export async function unmatch(matchId) {
-  // Soft delete - set active to false
   const matchRef = doc(db, 'matches', matchId);
-  await setDoc(matchRef, { active: false, unmatchedAt: serverTimestamp() }, { merge: true });
+  await Promise.race([
+    setDoc(matchRef, { active: false, unmatchedAt: serverTimestamp() }, { merge: true }),
+    swipeTimeout(),
+  ]);
   showToast('Match desfeito.', 'info');
 }
 
-// ─── Mock profiles for demo ───────────────────────────────
-export const MOCK_PROFILES = [
-  {
-    uid:       'mock1',
-    displayName: 'Sofia Martins',
-    age:        26,
-    bio:        'Apaixonada por viagens, café e música ao vivo 🎵✈️',
-    photoURL:   'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=400&q=80',
-    interests:  ['Música', 'Viagens', 'Café', 'Arte'],
-    kmAway:     2,
-    veloraScore: 87,
-    verified:   true,
-    lookingFor: ['dating', 'friendship'],
-  },
-  {
-    uid:       'mock2',
-    displayName: 'Isabela Costa',
-    age:        24,
-    bio:        'Fotógrafa de natureza, yogi nas horas vagas 🌿📸',
-    photoURL:   'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=400&q=80',
-    interests:  ['Fotografia', 'Yoga', 'Natureza', 'Livros'],
-    kmAway:     5,
-    veloraScore: 92,
-    verified:   true,
-    lookingFor: ['dating'],
-  },
-  {
-    uid:       'mock3',
-    displayName: 'Valentina Rocha',
-    age:        28,
-    bio:        'Chef de cuisine, aventureira e colecionadora de histórias 🍳🌎',
-    photoURL:   'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=400&q=80',
-    interests:  ['Gastronomia', 'Aventura', 'Cinema', 'Dança'],
-    kmAway:     8,
-    veloraScore: 78,
-    verified:   false,
-    lookingFor: ['casual', 'friendship'],
-  },
-  {
-    uid:       'mock4',
-    displayName: 'Luna Ferreira',
-    age:        23,
-    bio:        'Estudante de astronomia. Procuro alguém para observar estrelas 🌟',
-    photoURL:   'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=400&q=80',
-    interests:  ['Astronomia', 'Ciência', 'Gaming', 'Anime'],
-    kmAway:     3,
-    veloraScore: 95,
-    verified:   true,
-    lookingFor: ['dating', 'friendship'],
-  },
-  {
-    uid:       'mock5',
-    displayName: 'Ana Lima',
-    age:        30,
-    bio:        'Empresária, mãe de dois gatinhos e apaixonada por surfar 🏄‍♀️🐱',
-    photoURL:   'https://images.unsplash.com/photo-1488716820095-cbe80883c496?w=400&q=80',
-    interests:  ['Surf', 'Negócios', 'Animais', 'Praia'],
-    kmAway:     12,
-    veloraScore: 83,
-    verified:   true,
-    lookingFor: ['dating'],
-  },
-];
+// Mock profiles removed — platform ready for real users
+export const MOCK_PROFILES = [];

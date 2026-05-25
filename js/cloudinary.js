@@ -12,7 +12,7 @@
 
 export const CLOUDINARY_CONFIG = {
   cloudName:    'di27wnki0',
-  uploadPreset: 'velora_unsigned',
+  uploadPreset: 'velora_upload',
 };
 
 export function isCloudinaryConfigured() {
@@ -30,6 +30,7 @@ export function uploadToCloudinary(file, folder = 'velora/photos', onProgress = 
     const xhr = new XMLHttpRequest();
     const url = `https://api.cloudinary.com/v1_1/${CLOUDINARY_CONFIG.cloudName}/image/upload`;
     xhr.open('POST', url);
+    xhr.timeout = 60000; // 60s hard limit
 
     xhr.upload.addEventListener('progress', (e) => {
       if (e.lengthComputable && onProgress) {
@@ -38,16 +39,30 @@ export function uploadToCloudinary(file, folder = 'velora/photos', onProgress = 
     });
 
     xhr.addEventListener('load', () => {
-      if (xhr.status === 200) {
-        const data = JSON.parse(xhr.responseText);
-        resolve(data.secure_url);
-      } else {
-        const err = JSON.parse(xhr.responseText || '{}');
-        reject(new Error(err.error?.message || 'Upload falhou'));
+      // Entire handler wrapped in try/catch — JSON.parse inside an async callback
+      // does NOT propagate to the Promise constructor if it throws, causing the
+      // promise to hang forever. This wrapper ensures reject() is always called.
+      try {
+        if (xhr.status === 200) {
+          const data = JSON.parse(xhr.responseText);
+          resolve(data.secure_url);
+        } else {
+          let msg = `Erro ${xhr.status}`;
+          try {
+            const errData = JSON.parse(xhr.responseText);
+            msg = errData.error?.message || msg;
+          } catch {
+            msg = `Cloudinary retornou status ${xhr.status}. Verifique o upload preset.`;
+          }
+          reject(new Error(msg));
+        }
+      } catch (e) {
+        reject(new Error('Resposta inválida do Cloudinary: ' + (e.message || 'erro desconhecido')));
       }
     });
 
-    xhr.addEventListener('error', () => reject(new Error('Erro de rede ao fazer upload')));
+    xhr.addEventListener('error',   () => reject(new Error('Erro de rede ao enviar para Cloudinary')));
+    xhr.addEventListener('timeout', () => reject(new Error('Timeout ao enviar para Cloudinary (60s)')));
     xhr.send(formData);
   });
 }

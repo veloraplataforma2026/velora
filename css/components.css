@@ -179,6 +179,17 @@
   transition: all var(--transition-base);
 }
 
+select.input-field {
+  appearance: auto;
+  background-color: #0d0d24;
+  color: #ffffff;
+}
+
+select.input-field option {
+  background-color: #0d0d24;
+  color: #ffffff;
+}
+
 .input-field.has-icon { padding-left: 48px; }
 .input-field.has-icon-right { padding-right: 48px; }
 

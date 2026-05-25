@@ -22,9 +22,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
 
   <!-- App Styles -->
-  <link rel="stylesheet" href="css/main.css">
-  <link rel="stylesheet" href="css/components.css">
-  <link rel="stylesheet" href="css/animations.css">
+  <link rel="stylesheet" href="css/main.css?v=7">
+  <link rel="stylesheet" href="css/components.css?v=7">
+  <link rel="stylesheet" href="css/animations.css?v=7">
 
   <style>
     #loading-screen {
@@ -142,7 +142,7 @@
     const emergency = setTimeout(() => showFallback('Tempo limite de carregamento'), 8000);
 
     try {
-      const { boot } = await import('./js/app.js');
+      const { boot } = await import('./js/app.js?v=7');
       await boot();
 
       // Guarantee minimum display time so loading bar animation is seen

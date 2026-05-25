@@ -1,18 +1,18 @@
-/* ============================================================
+﻿/* ============================================================
    VELORA — Profile Module
    View/edit profile, update Firestore, photo management
    ============================================================ */
 
-import { db, storage } from './firebase-config.js';
+import { db, storage } from './firebase-config.js?v=7';
 import {
   doc, setDoc, serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import {
   ref, uploadBytesResumable, getDownloadURL,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-storage.js';
-import { VeloraState } from './app.js';
-import { showToast } from './ui.js';
-import { t } from './i18n.js';
+import { VeloraState } from './app.js?v=7';
+import { showToast } from './ui.js?v=7';
+import { t } from './i18n.js?v=7';
 
 // ─── Update Profile ───────────────────────────────────────
 export async function saveProfile(uid, data) {

@@ -1,19 +1,18 @@
-/* ============================================================
+﻿/* ============================================================
    VELORA — Gallery Module
    Cloudinary upload + Firestore metadata
    Sistema de fotos bloqueadas por SPARKS
    ============================================================ */
 
-import { db } from './firebase-config.js';
+import { db } from './firebase-config.js?v=7';
 import {
   doc, collection, addDoc, getDocs, deleteDoc,
-  updateDoc, getDoc, serverTimestamp, query, orderBy,
+  updateDoc, getDoc, serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { VeloraState } from './app.js';
-import { showToast } from './ui.js';
-import { t } from './i18n.js';
-import { deductSparks, hasSparks } from './currency.js';
-import { uploadGalleryPhoto, isCloudinaryConfigured } from './cloudinary.js';
+import { showToast } from './ui.js?v=7';
+import { t } from './i18n.js?v=7';
+import { deductSparks, hasSparks } from './currency.js?v=7';
+import { uploadGalleryPhoto, isCloudinaryConfigured } from './cloudinary.js?v=7';
 
 const LOCKED_PHOTO_COST = 5;
 
@@ -26,17 +25,23 @@ export async function uploadPhoto(uid, file, isLocked = false, onProgress = null
 
   const url = await uploadGalleryPhoto(uid, file, onProgress);
 
-  const photoRef = await addDoc(
-    collection(db, 'gallery', uid, 'photos'),
-    {
-      url,
-      isLocked,
-      unlockCost: isLocked ? LOCKED_PHOTO_COST : 0,
-      unlockedBy: [],
-      createdAt:  serverTimestamp(),
-      uid,
-    }
+  const saveTimeout = new Promise((_, rej) =>
+    setTimeout(() => rej(new Error('Tempo limite ao salvar foto. Verifique sua conexão.')), 12000)
   );
+  const photoRef = await Promise.race([
+    addDoc(
+      collection(db, 'gallery', uid, 'photos'),
+      {
+        url,
+        isLocked,
+        unlockCost: isLocked ? LOCKED_PHOTO_COST : 0,
+        unlockedBy: [],
+        createdAt:  serverTimestamp(),
+        uid,
+      }
+    ),
+    saveTimeout,
+  ]);
 
   return { id: photoRef.id, url, isLocked };
 }
@@ -44,51 +49,50 @@ export async function uploadPhoto(uid, file, isLocked = false, onProgress = null
 // ─── Get User Gallery ─────────────────────────────────────
 export async function getUserGallery(uid) {
   const photosRef = collection(db, 'gallery', uid, 'photos');
-  const q = query(photosRef, orderBy('createdAt', 'desc'));
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const snap = await getDocs(photosRef);
+  return snap.docs
+    .map(d => ({ id: d.id, ...d.data() }))
+    .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 }
+
+const galTimeout = (ms = 10000) => new Promise((_, r) => setTimeout(() => r(new Error('Timeout na operação.')), ms));
 
 // ─── Toggle Photo Lock ────────────────────────────────────
 export async function togglePhotoLock(uid, photoId, isLocked) {
-  await updateDoc(doc(db, 'gallery', uid, 'photos', photoId), { isLocked });
+  await Promise.race([updateDoc(doc(db, 'gallery', uid, 'photos', photoId), { isLocked }), galTimeout()]);
   showToast(isLocked ? 'Foto bloqueada 🔒' : 'Foto tornada pública 🌐', 'info');
 }
 
 // ─── Unlock Photo with SPARKS ─────────────────────────────
 export async function unlockPhoto(viewerUid, ownerUid, photoId) {
   const photoRef  = doc(db, 'gallery', ownerUid, 'photos', photoId);
-  const photoSnap = await getDoc(photoRef);
+  const photoSnap = await Promise.race([getDoc(photoRef), galTimeout()]);
   if (!photoSnap.exists()) return false;
 
   const photo = photoSnap.data();
-
   if (photo.unlockedBy?.includes(viewerUid)) return true;
 
   const cost   = photo.unlockCost || LOCKED_PHOTO_COST;
   const enough = await hasSparks(viewerUid, cost);
-  if (!enough) {
-    showToast(t('noSparks'), 'error');
-    return false;
-  }
+  if (!enough) { showToast(t('noSparks'), 'error'); return false; }
 
   await deductSparks(viewerUid, cost, `Desbloqueio de foto de ${ownerUid}`);
-  await updateDoc(photoRef, {
-    unlockedBy: [...(photo.unlockedBy || []), viewerUid],
-  });
-
+  await Promise.race([
+    updateDoc(photoRef, { unlockedBy: [...(photo.unlockedBy || []), viewerUid] }),
+    galTimeout(),
+  ]);
   showToast(t('photoUnlocked'), 'gold');
   return true;
 }
 
 // ─── Delete Photo ─────────────────────────────────────────
 export async function deletePhoto(uid, photoId) {
-  await deleteDoc(doc(db, 'gallery', uid, 'photos', photoId));
+  await Promise.race([deleteDoc(doc(db, 'gallery', uid, 'photos', photoId)), galTimeout()]);
   showToast('Foto excluída', 'info');
 }
 
 // ─── Render Gallery ───────────────────────────────────────
-export function renderGalleryGrid(photos, viewerUid, ownerUid, onPhotoClick) {
+export function renderGalleryGrid(photos, viewerUid, ownerUid) {
   if (!photos.length) {
     return `
       <div class="empty-state">

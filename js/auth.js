@@ -1,11 +1,11 @@
-/* ============================================================
+﻿/* ============================================================
    VELORA — Auth Module
    Firebase Authentication: Login, Register, Google OAuth,
    Logout, and route protection
    ============================================================ */
 
-import { auth, db } from './firebase-config.js';
-import { uploadProfilePhoto, isCloudinaryConfigured } from './cloudinary.js';
+import { auth, db } from './firebase-config.js?v=7';
+import { uploadProfilePhoto, isCloudinaryConfigured } from './cloudinary.js?v=7';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -21,9 +21,8 @@ import {
   getDoc,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { t } from './i18n.js';
-import { showToast, showPage } from './ui.js';
-import { VeloraState } from './app.js';
+import { t } from './i18n.js?v=7';
+import { VeloraState } from './app.js?v=7';
 
 const googleProvider = new GoogleAuthProvider();
 
@@ -31,14 +30,18 @@ const googleProvider = new GoogleAuthProvider();
 export function initAuthObserver(onLoggedIn, onLoggedOut) {
   return onAuthStateChanged(auth, async (user) => {
     if (user) {
-      let profile = null;
+      // Navigate immediately — don't block on Firestore profile fetch
+      onLoggedIn(user, null);
+      // Load profile in background and notify when ready
       try {
-        profile = await getUserProfile(user.uid);
+        const profile = await getUserProfile(user.uid);
+        if (VeloraState.currentUser?.uid === user.uid) {
+          VeloraState.currentUser = { ...VeloraState.currentUser, profile };
+          document.dispatchEvent(new CustomEvent('velora:profileLoaded'));
+        }
       } catch (err) {
         console.warn('[VELORA] Profile fetch failed (offline?):', err.message);
       }
-      VeloraState.currentUser = { ...user, profile };
-      onLoggedIn(user, profile);
     } else {
       VeloraState.currentUser = null;
       onLoggedOut();
@@ -67,7 +70,7 @@ export async function createUserProfile(uid, data) {
     lookingFor:    data.lookingFor || ['dating'],
     interests:     data.interests || [],
     isAdult:       data.isAdult || false,
-    sparks:        50, // Welcome bonus
+    sparks:        50,
     level:         1,
     xp:            0,
     streak:        0,
@@ -78,14 +81,19 @@ export async function createUserProfile(uid, data) {
     photos:        [],
     veloraScore:   Math.floor(Math.random() * 30) + 60,
   };
-  await setDoc(ref, profile);
+  const timeout = new Promise((_, r) => setTimeout(() => r(new Error('Timeout ao criar perfil.')), 12000));
+  await Promise.race([setDoc(ref, profile), timeout]);
   return profile;
 }
 
 // ─── Update User Profile ──────────────────────────────────
 export async function updateUserProfile(uid, data) {
   const ref = doc(db, 'users', uid);
-  await setDoc(ref, { ...data, updatedAt: serverTimestamp() }, { merge: true });
+  const timeout = new Promise((_, r) => setTimeout(() => r(new Error('Tempo limite esgotado. Verifique sua conexão.')), 10000));
+  await Promise.race([
+    setDoc(ref, { ...data, updatedAt: serverTimestamp() }, { merge: true }),
+    timeout,
+  ]);
 }
 
 // ─── Email/Password Login ─────────────────────────────────
