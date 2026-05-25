@@ -132,17 +132,29 @@ const swipeTimeout = (ms = 10000) => new Promise((_, r) => setTimeout(() => r(ne
 
 // ─── Load Potential Matches ───────────────────────────────
 export async function loadProfiles(currentUid) {
-  const swipedRef = collection(db, 'swipes', currentUid, 'actions');
-  const swipedSnap = await Promise.race([getDocs(swipedRef), swipeTimeout()]);
-  const swipedIds = new Set(swipedSnap.docs.map(d => d.id));
+  const [swipedSnap, blockedSnap, usersSnap] = await Promise.all([
+    Promise.race([getDocs(collection(db, 'swipes', currentUid, 'actions')), swipeTimeout()]),
+    Promise.race([getDocs(collection(db, 'blocks', currentUid, 'blocked')), swipeTimeout()]).catch(() => ({ docs: [] })),
+    Promise.race([getDocs(query(collection(db, 'users'), limit(50))), swipeTimeout()]),
+  ]);
+
+  const swipedIds  = new Set(swipedSnap.docs.map(d => d.id));
+  const blockedIds = new Set(blockedSnap.docs.map(d => d.id));
   swipedIds.add(currentUid);
 
-  const usersRef = collection(db, 'users');
-  const snap = await Promise.race([getDocs(query(usersRef, limit(50))), swipeTimeout()]);
-
-  return snap.docs
+  const now = Date.now();
+  const profiles = usersSnap.docs
     .map(d => ({ uid: d.id, ...d.data() }))
-    .filter(u => !swipedIds.has(u.uid));
+    .filter(u => !swipedIds.has(u.uid) && !blockedIds.has(u.uid));
+
+  // Boosted profiles float to the top
+  return profiles.sort((a, b) => {
+    const aBoost = a.boostedUntil?.toDate?.()?.getTime?.() || a.boostedUntil?.getTime?.() || 0;
+    const bBoost = b.boostedUntil?.toDate?.()?.getTime?.() || b.boostedUntil?.getTime?.() || 0;
+    const aActive = aBoost > now ? 1 : 0;
+    const bActive = bBoost > now ? 1 : 0;
+    return bActive - aActive;
+  });
 }
 
 // ─── Record Swipe & Check Match ───────────────────────────

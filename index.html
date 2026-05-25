@@ -13,6 +13,10 @@
 
   <title>VELORA — Connect Beyond Limits</title>
 
+  <!-- PWA -->
+  <link rel="manifest" href="/manifest.json">
+  <link rel="apple-touch-icon" href="/assets/icon-192.png">
+
   <!-- Preconnect for faster CDN -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -100,6 +104,33 @@
 
   <!-- Main App -->
   <div id="app"></div>
+
+  <!-- Service Worker Registration -->
+  <script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      });
+      // Handle SW notification click → navigate to page
+      navigator.serviceWorker.addEventListener('message', (e) => {
+        if (e.data?.type === 'NOTIFICATION_CLICK' && e.data.url) {
+          window.location.href = e.data.url;
+        }
+      });
+    }
+  </script>
+
+  <!-- Global Error Boundary -->
+  <script>
+    window.addEventListener('error', (e) => {
+      if (e.message?.includes('ResizeObserver') || e.message?.includes('Script error')) return;
+      console.error('[VELORA] Uncaught error:', e.message, e.filename, e.lineno);
+    });
+    window.addEventListener('unhandledrejection', (e) => {
+      if (e.reason?.code?.startsWith?.('auth/') || e.reason?.code?.startsWith?.('firestore/')) return;
+      console.error('[VELORA] Unhandled rejection:', e.reason);
+    });
+  </script>
 
   <!-- Bootstrap script — dynamic import so the loading screen is
        always visible and the fallback timeout always fires -->

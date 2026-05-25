@@ -1251,3 +1251,78 @@ select.input-field option {
     box-shadow: 0 0 80px rgba(0, 245, 212, 0.05), 0 0 80px rgba(255, 43, 214, 0.05);
   }
 }
+
+/* ─── Stories Bar ────────────────────────────────────────── */
+.stories-bar {
+  display: flex;
+  gap: 12px;
+  padding: 8px 16px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.stories-bar::-webkit-scrollbar { display: none; }
+
+.story-bubble {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.story-bubble-ring {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  padding: 2px;
+  background: var(--bg-surface);
+}
+
+.story-bubble-ring-active {
+  background: linear-gradient(135deg, #00F5D4, #FF2BD6, #7C3CFF);
+}
+
+.story-bubble-inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--bg-surface);
+  border: 2px solid var(--bg-deep);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.story-bubble-add-inner {
+  background: linear-gradient(135deg, rgba(0,245,212,0.15), rgba(124,60,255,0.15));
+  border: 2px dashed rgba(0,245,212,0.4);
+  color: var(--primary);
+  font-size: 1.4rem;
+  font-weight: 700;
+}
+
+.story-bubble-name {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  font-family: var(--font-display);
+  font-weight: 600;
+  max-width: 56px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.story-bubble-seen .story-bubble-ring-active {
+  background: var(--bg-surface);
+  border: 2px solid rgba(255,255,255,0.15);
+}
+
+/* ─── Report Modal ───────────────────────────────────────── */
+.report-option:hover {
+  background: var(--glass-hover);
+  border-color: var(--primary);
+}

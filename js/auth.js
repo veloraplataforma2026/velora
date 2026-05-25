@@ -14,6 +14,7 @@ import {
   signOut,
   onAuthStateChanged,
   sendPasswordResetEmail,
+  sendEmailVerification,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import {
   doc,
@@ -136,8 +137,10 @@ export async function registerWithEmail(email, password, profileData, photoFile 
     await createUserProfile(uid, { ...profileData, photoURL, email: cred.user.email });
   } catch (firestoreErr) {
     console.warn('[VELORA] Profile creation failed (non-fatal):', firestoreErr.code, firestoreErr.message);
-    // Auth succeeded — user exists, profile can be created on next login
   }
+
+  // Send email verification (non-blocking)
+  sendEmailVerification(cred.user).catch(() => {});
 
   return { success: true, user: cred.user };
 }
@@ -168,6 +171,18 @@ export async function loginWithGoogle() {
 // ─── Sign Out ─────────────────────────────────────────────
 export async function logoutUser() {
   await signOut(auth);
+}
+
+// ─── Resend Email Verification ───────────────────────────
+export async function resendEmailVerification() {
+  const user = auth.currentUser;
+  if (!user) return { success: false, error: 'Nenhum usuário logado.' };
+  try {
+    await sendEmailVerification(user);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: getAuthError(err.code) };
+  }
 }
 
 // ─── Password Reset ───────────────────────────────────────

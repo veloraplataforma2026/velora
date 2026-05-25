@@ -7,7 +7,7 @@ import { i18n, t, LANGUAGES } from './i18n.js?v=7';
 import { auth, db } from './firebase-config.js?v=7';
 import {
   initAuthObserver, logoutUser, getUserProfile, updateUserProfile,
-  loginWithEmail, loginWithGoogle, registerWithEmail,
+  loginWithEmail, loginWithGoogle, registerWithEmail, resendEmailVerification,
 } from './auth.js?v=7';
 import {
   showPage, showToast, showModal, showConfirm,
@@ -21,6 +21,10 @@ import {
 import { subscribeToChat, sendMessage, renderMessages, typingIndicatorHTML, MESSAGE_SUGGESTIONS } from './chat.js?v=7';
 import { uploadPhoto, getUserGallery, togglePhotoLock, unlockPhoto, deletePhoto, renderGalleryGrid } from './gallery.js?v=7';
 import { getBalance, purchaseSparks, updateSparksDisplay, renderStoreHTML, SPARKS_PACKAGES, hasSparks, deductSparks, SPARKS_COSTS } from './currency.js?v=7';
+import { analytics } from './analytics.js?v=7';
+import { blockUser, reportUser, getBlockedUids, renderReportModal } from './moderation.js?v=7';
+import { addStory, getActiveStories, viewStory, reactToStory, deleteStory, renderStoriesBar, renderStoryViewer } from './stories.js?v=7';
+import { requestNotificationPermission, initForegroundMessages, getNotificationStatus } from './notifications.js?v=7';
 import {
   collection, doc, addDoc, getDocs, onSnapshot, setDoc, updateDoc,
   query, where, orderBy, serverTimestamp, getDoc, limit,
@@ -522,6 +526,11 @@ function renderHome() {
   return `
     ${renderTopHeader(sparks)}
     <div class="page-content home-page" style="padding-bottom:100px">
+      <div id="stories-bar-container" style="padding:var(--space-sm) 0;border-bottom:1px solid var(--glass-border);overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <div style="display:flex;align-items:center;padding:0 var(--space-md);gap:4px;min-height:80px;color:var(--text-muted);font-size:0.8rem">
+          Carregando stories...
+        </div>
+      </div>
       <div class="home-layout">
         <div class="home-swipe-col">
           <div id="swipe-deck" style="position:relative;width:100%;max-width:300px;margin:0 auto;min-height:380px">
@@ -864,6 +873,13 @@ function renderProfilePage() {
 
           <!-- Actions -->
           <div style="display:flex;flex-direction:column;gap:var(--space-sm)">
+            <button class="btn btn-ghost" onclick="window._boostProfile()" style="justify-content:flex-start;border:1px solid rgba(124,60,255,0.3)">
+              🚀 Boost de perfil — ${SPARKS_COSTS.boost1h} ✨ (1h)
+              ${profile?.boostedUntil && new Date(profile.boostedUntil?.toDate?.() || profile.boostedUntil) > new Date() ? `<span style="margin-left:auto;font-size:0.75rem;color:var(--accent)">Ativo</span>` : ''}
+            </button>
+            <button class="btn btn-ghost" onclick="window._enableNotifications()" style="justify-content:flex-start">
+              🔔 Ativar notificações
+            </button>
             <button class="btn btn-ghost" onclick="window._navigate('settings')" style="justify-content:flex-start">
               ${svgIcon('settings', 18)} ${t('settings')}
             </button>
@@ -1235,11 +1251,141 @@ function setupGlobalHandlers() {
   window._triggerPass = () => {
     VeloraState.swipeEngine?.triggerPass();
   };
-  window._triggerSuperlike = () => {
-    VeloraState.swipeEngine?.triggerSuperLike();
+  window._triggerSuperlike = async () => {
+    const uid = VeloraState.currentUser?.uid;
+    if (!uid) { VeloraState.swipeEngine?.triggerSuperLike(); return; }
+    const cost = SPARKS_COSTS.superLike;
+    try {
+      await deductSparks(uid, cost, 'Super Like');
+      analytics.logSuperLike(VeloraState.profiles[VeloraState.currentCardIdx]?.uid || '');
+      VeloraState.swipeEngine?.triggerSuperLike();
+    } catch {
+      showModal(`
+        <div style="padding:24px;text-align:center;max-width:320px">
+          <div style="font-size:2.5rem;margin-bottom:12px">⭐</div>
+          <h3 style="font-family:var(--font-display);font-weight:800;margin-bottom:8px">Super Like</h3>
+          <p style="color:var(--text-muted);font-size:0.9rem;margin-bottom:20px">Você precisa de ${cost} ✨ Sparks para enviar um Super Like.</p>
+          <button class="btn btn-primary btn-w-full" onclick="document.querySelector('.modal-overlay')?.remove();window._navigate('store')">Comprar Sparks ✨</button>
+          <button class="btn btn-ghost btn-w-full mt-sm" onclick="document.querySelector('.modal-overlay')?.remove()">Cancelar</button>
+        </div>
+      `, { centered: true });
+    }
   };
-  window._rewindSwipe = () => {
-    showToast(`Desfazer requer ${3} ✨ Sparks`, 'gold');
+
+  window._rewindSwipe = async () => {
+    const uid = VeloraState.currentUser?.uid;
+    const cost = SPARKS_COSTS.rewind;
+    if (!uid) { showToast(`Desfazer requer ${cost} ✨ Sparks`, 'gold'); return; }
+    try {
+      await deductSparks(uid, cost, 'Desfazer swipe');
+      if (VeloraState.currentCardIdx > 0) {
+        VeloraState.currentCardIdx--;
+        loadAndShowHome();
+      }
+      showToast('Swipe desfeito! ↩️', 'success');
+    } catch { /* insufficient sparks — already shows toast */ }
+  };
+
+  // ─── Boost de perfil ──────────────────────────────────────
+  window._boostProfile = async () => {
+    const uid = VeloraState.currentUser?.uid;
+    if (!uid) return;
+    const cost = SPARKS_COSTS.boost1h;
+    try {
+      await deductSparks(uid, cost, 'Boost de perfil 1h');
+      const boostedUntil = new Date(Date.now() + 60 * 60 * 1000);
+      await updateDoc(doc(db, 'users', uid), { boostedUntil });
+      if (VeloraState.currentUser?.profile) VeloraState.currentUser.profile.boostedUntil = boostedUntil;
+      analytics.logBoost(1);
+      showToast('🚀 Perfil impulsionado por 1 hora!', 'gold');
+      showPage('profile');
+    } catch { /* insufficient sparks */ }
+  };
+
+  // ─── Stories ──────────────────────────────────────────────
+  window._addStory = () => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.onchange = async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const uid = VeloraState.currentUser?.uid;
+      if (!uid) { showToast('Faça login para publicar um story', 'error'); return; }
+      try {
+        showToast('Publicando story...', 'info');
+        await addStory(uid, file);
+        analytics.logStoryPost();
+        loadAndShowHome();
+      } catch (err) {
+        showToast('Erro ao publicar story: ' + (err.message || 'tente novamente'), 'error');
+      }
+    };
+    input.click();
+  };
+
+  window._viewStory = async (storyId) => {
+    const uid = VeloraState.currentUser?.uid;
+    const stories = await getActiveStories();
+    const story = stories.find(s => s.id === storyId);
+    if (!story) return;
+    showModal(renderStoryViewer(story, uid || ''), { centered: true });
+    if (uid) viewStory(storyId, uid).catch(() => {});
+    analytics.logStoryView(storyId, story.uid);
+  };
+
+  window._reactStory = async (storyId, emoji) => {
+    const uid = VeloraState.currentUser?.uid;
+    if (!uid) return;
+    await reactToStory(storyId, uid, emoji);
+    document.querySelector('.modal-overlay')?.remove();
+  };
+
+  window._deleteStory = async (storyId) => {
+    const confirmed = await showConfirm('Excluir story', 'Tem certeza que deseja excluir este story?', 'Excluir');
+    if (confirmed) { await deleteStory(storyId); document.querySelector('.modal-overlay')?.remove(); loadAndShowHome(); }
+  };
+
+  // ─── Moderação ────────────────────────────────────────────
+  window._blockUser = async (targetUid, targetName) => {
+    const uid = VeloraState.currentUser?.uid;
+    if (!uid) return;
+    const confirmed = await showConfirm('Bloquear usuário', `Bloquear ${targetName}? Ele não aparecerá mais para você.`, 'Bloquear');
+    if (!confirmed) return;
+    await blockUser(uid, targetUid);
+    analytics.logBlock();
+    document.querySelector('.modal-overlay')?.remove();
+  };
+
+  window._reportUser = (targetUid, targetName) => {
+    const uid = VeloraState.currentUser?.uid;
+    if (!uid) return;
+    showModal(renderReportModal(uid, targetUid, targetName), { centered: true });
+  };
+
+  window._submitReport = async (currentUid, targetUid, targetName) => {
+    const reason = document.querySelector('input[name="report-reason"]:checked')?.value || 'other';
+    await reportUser(currentUid, targetUid, reason);
+    analytics.logReport(reason);
+    document.querySelector('.modal-overlay')?.remove();
+    // Auto-block after report
+    await blockUser(currentUid, targetUid);
+  };
+
+  // ─── Verificação de e-mail ────────────────────────────────
+  window._resendVerification = async () => {
+    const res = await resendEmailVerification();
+    if (res.success) showToast('E-mail de verificação reenviado! Verifique sua caixa de entrada.', 'success');
+    else showToast(res.error, 'error');
+  };
+
+  // ─── Notificações ─────────────────────────────────────────
+  window._enableNotifications = async () => {
+    const uid = VeloraState.currentUser?.uid;
+    if (!uid) return;
+    const granted = await requestNotificationPermission(uid);
+    if (granted) showToast('Notificações ativadas! 🔔', 'success');
+    else showToast('Permissão de notificações negada.', 'info');
   };
 
   window._unmatch = async (matchId, name) => {
@@ -1516,6 +1662,16 @@ function setupGlobalHandlers() {
               💬 Mensagem direta
               <span style="color:var(--gold);font-size:0.8rem;margin-left:auto">15 ✨</span>
             </button>
+            <div style="display:flex;gap:8px;margin-top:6px">
+              <button class="btn btn-ghost btn-sm" style="flex:1;font-size:0.78rem;color:var(--text-muted)"
+                onclick="window._blockUser('${ownerUid}','${safeName}')">
+                🚫 Bloquear
+              </button>
+              <button class="btn btn-ghost btn-sm" style="flex:1;font-size:0.78rem;color:var(--danger)"
+                onclick="window._reportUser('${ownerUid}','${safeName}')">
+                ⚠️ Denunciar
+              </button>
+            </div>
           </div>
 
         </div>
@@ -2022,6 +2178,18 @@ function initPageHandlers() {
     }
 
     if (pageId === 'home') {
+      // Load stories bar
+      const storiesContainer = el.querySelector('#stories-bar-container');
+      if (storiesContainer) {
+        getActiveStories().then(stories => {
+          if (!storiesContainer.isConnected) return;
+          const uid = VeloraState.currentUser?.uid || '';
+          storiesContainer.innerHTML = renderStoriesBar(stories, uid);
+        }).catch(() => {
+          if (storiesContainer.isConnected) storiesContainer.innerHTML = '';
+        });
+      }
+
       const topCard = el.querySelector('#top-card');
       const profiles = VeloraState.profiles.length ? VeloraState.profiles : MOCK_PROFILES;
       if (topCard && profiles.length > VeloraState.currentCardIdx) {
@@ -2030,10 +2198,13 @@ function initPageHandlers() {
           VeloraState.currentCardIdx++;
           const uid = VeloraState.currentUser?.uid || 'demo';
 
+          analytics.logSwipe(action, profile.uid);
+
           if (action !== 'pass' && uid !== 'demo') {
             try {
               const result = await recordSwipe(uid, profile.uid, action);
               if (result.matched) {
+                analytics.logMatch(result.matchId);
                 const myPhoto = VeloraState.currentUser?.profile?.photoURL;
                 const theirPhoto = profile.photoURL;
                 setTimeout(() => {
@@ -2398,7 +2569,25 @@ export async function boot() {
         VeloraState.currentCardIdx = 0;
         updateSparksDisplay();
         startPresence(user.uid);
+        initForegroundMessages().catch(() => {});
+        analytics.logLogin(user.providerData?.[0]?.providerId || 'email');
         await loadAndShowHome().catch(() => showPage('login'));
+        // Email verification banner (non-blocking, shown after home loads)
+        if (!user.emailVerified && user.providerData?.[0]?.providerId !== 'google.com') {
+          setTimeout(() => {
+            const existing = document.getElementById('email-verify-banner');
+            if (existing) return;
+            const banner = document.createElement('div');
+            banner.id = 'email-verify-banner';
+            banner.innerHTML = `
+              <div style="position:fixed;top:0;left:0;right:0;z-index:8000;background:linear-gradient(90deg,rgba(247,201,72,0.95),rgba(255,140,0,0.95));color:#050510;padding:10px 16px;display:flex;align-items:center;gap:10px;font-size:0.82rem;font-family:var(--font-display);font-weight:600;backdrop-filter:blur(8px)">
+                <span>⚠️ Verifique seu e-mail para acesso completo.</span>
+                <button onclick="window._resendVerification()" style="margin-left:auto;padding:4px 12px;border-radius:99px;background:#050510;color:#fff;border:none;cursor:pointer;font-size:0.8rem;font-weight:700">Reenviar</button>
+                <button onclick="document.getElementById('email-verify-banner')?.remove()" style="padding:4px 8px;border-radius:99px;background:transparent;border:none;cursor:pointer;font-size:1rem">✕</button>
+              </div>`;
+            document.body.prepend(banner);
+          }, 2000);
+        }
         // Creditar Sparks após retorno do Stripe
         if (_pendingStripePkg) {
           const pkgId = _pendingStripePkg;

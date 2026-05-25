@@ -1,0 +1,21 @@
+{
+  "name": "VELORA — Connect Beyond Limits",
+  "short_name": "VELORA",
+  "description": "Plataforma social de conexões futurística. Namoro, amizade e relacionamentos.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#050510",
+  "theme_color": "#050510",
+  "orientation": "portrait-primary",
+  "lang": "pt-BR",
+  "categories": ["social", "lifestyle"],
+  "icons": [
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    { "name": "Explorar", "url": "/?page=home",    "description": "Ver perfis para swipe" },
+    { "name": "Matches",  "url": "/?page=matches", "description": "Ver seus matches" }
+  ]
+}
