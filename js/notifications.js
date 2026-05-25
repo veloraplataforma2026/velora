@@ -8,7 +8,7 @@ import { doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/fireb
 import { showToast } from './ui.js?v=7';
 
 // VAPID public key from Firebase Console → Project Settings → Cloud Messaging
-const VAPID_KEY = 'YOUR_VAPID_PUBLIC_KEY';
+const VAPID_KEY = 'BBG2twdX5vIMxgm3kUAxfkgLBcT2D0DHHbwwxh1Gf0au4HUsGUAJRWUMwyMRqGb0b1z76HckVSOEjQXBhx4W9-A';
 
 let _messaging = null;
 
