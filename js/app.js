@@ -1363,14 +1363,22 @@ function setupGlobalHandlers() {
     showModal(renderReportModal(uid, targetUid, targetName), { centered: true });
   };
 
-  window._submitReport = async (currentUid, targetUid, targetName) => {
+  window._submitReport = async () => {
+    const btn = document.getElementById('report-submit-btn');
+    const currentUid = btn?.dataset.current;
+    const targetUid  = btn?.dataset.target;
+    if (!currentUid || !targetUid) return;
     const reason = document.querySelector('input[name="report-reason"]:checked')?.value || 'other';
     await reportUser(currentUid, targetUid, reason);
     analytics.logReport(reason);
     document.querySelector('.modal-overlay')?.remove();
-    // Auto-block after report
     await blockUser(currentUid, targetUid);
   };
+
+  // Wire up report submit button after modal renders
+  document.addEventListener('click', (e) => {
+    if (e.target?.id === 'report-submit-btn') window._submitReport();
+  });
 
   // ─── Verificação de e-mail ────────────────────────────────
   window._resendVerification = async () => {

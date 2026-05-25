@@ -16,11 +16,23 @@ import { uploadGalleryPhoto, isCloudinaryConfigured } from './cloudinary.js?v=7'
 
 const LOCKED_PHOTO_COST = 5;
 
+const ALLOWED_MIME = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const MAX_SIZE_MB  = 8;
+
 // ─── Upload Photo ─────────────────────────────────────────
 export async function uploadPhoto(uid, file, isLocked = false, onProgress = null) {
   if (!isCloudinaryConfigured()) {
     showToast('Configure o Cloudinary em js/cloudinary.js primeiro!', 'error');
     throw new Error('Cloudinary não configurado');
+  }
+
+  if (!ALLOWED_MIME.includes(file.type)) {
+    showToast('Apenas JPEG, PNG, WebP e GIF são permitidos.', 'error');
+    throw new Error('Tipo de arquivo inválido');
+  }
+  if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+    showToast(`Arquivo muito grande. Máximo ${MAX_SIZE_MB}MB.`, 'error');
+    throw new Error('Arquivo muito grande');
   }
 
   const url = await uploadGalleryPhoto(uid, file, onProgress);

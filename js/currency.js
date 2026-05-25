@@ -7,6 +7,7 @@ import { db } from './firebase-config.js?v=7';
 import {
   doc, getDoc, updateDoc, addDoc, collection,
   serverTimestamp, query, where, getDocs, increment, limit,
+  runTransaction,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const fsTimeout = (ms = 10000) => new Promise((_, r) => setTimeout(() => r(new Error('Timeout na operação.')), ms));
@@ -53,18 +54,30 @@ export async function hasSparks(uid, amount) {
   return balance >= amount;
 }
 
-// ─── Deduct Sparks ────────────────────────────────────────
+// ─── Deduct Sparks (transação atômica — previne saldo negativo) ───
 export async function deductSparks(uid, amount, description = '') {
-  const balance = await getBalance(uid);
-  if (balance < amount) {
-    showToast(`Sparks insuficientes. Você tem ${balance} ✨`, 'error');
-    throw new Error('Saldo insuficiente');
-  }
-  await Promise.race([updateDoc(doc(db, 'users', uid), { sparks: increment(-amount) }), fsTimeout()]);
+  const userRef = doc(db, 'users', uid);
+
+  const newBalance = await Promise.race([
+    runTransaction(db, async (tx) => {
+      const snap = await tx.get(userRef);
+      if (!snap.exists()) throw new Error('Usuário não encontrado.');
+      const current = snap.data().sparks || 0;
+      if (current < amount) {
+        showToast(`Sparks insuficientes. Você tem ${current} ✨`, 'error');
+        throw new Error('Saldo insuficiente');
+      }
+      tx.update(userRef, { sparks: increment(-amount) });
+      return current - amount;
+    }),
+    fsTimeout(),
+  ]);
+
   addDoc(collection(db, 'transactions'), {
     userId: uid, type: 'debit', amount: -amount, description, timestamp: serverTimestamp(),
   }).catch(() => {});
-  if (VeloraState.currentUser?.profile) VeloraState.currentUser.profile.sparks -= amount;
+
+  if (VeloraState.currentUser?.profile) VeloraState.currentUser.profile.sparks = newBalance;
   updateSparksDisplay();
 }
 

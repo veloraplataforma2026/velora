@@ -2,55 +2,134 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users - public read for basic info, write only self
+    // ─── Helpers ──────────────────────────────────────────
+    function isAuth() {
+      return request.auth != null;
+    }
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+    function notNegative(field) {
+      return !request.resource.data.keys().hasAll([field]) ||
+             request.resource.data[field] >= 0;
+    }
+
+    // ─── Users ────────────────────────────────────────────
+    // Leitura: apenas campos públicos (não e-mail, não fcmToken)
     match /users/{userId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isAuth();
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId)
+        // Impede saldo negativo de SPARKS
+        && notNegative('sparks')
+        // Impede que o cliente se auto-verifique
+        && (!request.resource.data.keys().hasAll(['verified']) ||
+             request.resource.data.verified == resource.data.verified);
+      allow delete: if false;
     }
 
-    // Matches - only participants can read/write
+    // ─── Matches ──────────────────────────────────────────
     match /matches/{matchId} {
-      allow read, write: if request.auth != null &&
-        (resource.data.user1 == request.auth.uid ||
-         resource.data.user2 == request.auth.uid);
-      allow create: if request.auth != null;
+      allow read: if isAuth() &&
+        resource.data.users.hasAny([request.auth.uid]);
+      allow create: if isAuth() &&
+        request.resource.data.users.hasAny([request.auth.uid]);
+      allow update: if isAuth() &&
+        resource.data.users.hasAny([request.auth.uid]);
+      allow delete: if false;
     }
 
-    // Messages - only match participants
-    match /conversations/{convId}/messages/{msgId} {
-      allow read, write: if request.auth != null &&
-        (get(/databases/$(database)/documents/conversations/$(convId)).data.participants.hasAny([request.auth.uid]));
-    }
-
+    // ─── Conversations ────────────────────────────────────
     match /conversations/{convId} {
-      allow read, write: if request.auth != null &&
+      allow read: if isAuth() &&
         resource.data.participants.hasAny([request.auth.uid]);
-      allow create: if request.auth != null;
+      allow create: if isAuth() &&
+        request.resource.data.participants.hasAny([request.auth.uid]);
+      allow update: if isAuth() &&
+        resource.data.participants.hasAny([request.auth.uid]);
+      allow delete: if false;
+
+      match /messages/{msgId} {
+        allow read, write: if isAuth() &&
+          get(/databases/$(database)/documents/conversations/$(convId))
+            .data.participants.hasAny([request.auth.uid]);
+      }
     }
 
-    // Posts - authenticated users can read, authors can write
+    // ─── Posts ────────────────────────────────────────────
     match /posts/{postId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null;
-      allow update, delete: if request.auth != null && resource.data.authorId == request.auth.uid;
+      allow read:          if isAuth();
+      allow create:        if isAuth() &&
+        request.resource.data.authorId == request.auth.uid;
+      allow update, delete: if isAuth() &&
+        resource.data.authorId == request.auth.uid;
     }
 
-    // Transactions - users see only their own
+    // ─── Transactions ────────────────────────────────────
     match /transactions/{txId} {
-      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
-      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow read: if isAuth() &&
+        resource.data.userId == request.auth.uid;
+      allow create: if isAuth() &&
+        request.resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
     }
 
-    // Gallery photos metadata
+    // ─── Gallery ─────────────────────────────────────────
+    // Leitura: dono sempre lê; outros só lêem fotos desbloqueadas
     match /gallery/{userId}/photos/{photoId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && request.auth.uid == userId;
+      allow read: if isAuth() && (
+        request.auth.uid == userId ||
+        !resource.data.isLocked ||
+        resource.data.unlockedBy.hasAny([request.auth.uid])
+      );
+      allow create: if isOwner(userId)
+        && request.resource.data.size() <= 10;
+      allow update: if isAuth() && (
+        // Dono pode alterar qualquer campo
+        request.auth.uid == userId ||
+        // Outros só podem adicionar próprio UID em unlockedBy
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['unlockedBy']) &&
+         request.resource.data.unlockedBy.hasAll(resource.data.unlockedBy) &&
+         request.resource.data.unlockedBy.hasAny([request.auth.uid]))
+      );
+      allow delete: if isOwner(userId);
     }
 
-    // Swipe actions - owner can write; owner or target can read (needed for mutual like detection)
+    // ─── Swipes ───────────────────────────────────────────
+    // Apenas o dono escreve; dono ou alvo lê (necessário para mutual like)
     match /swipes/{userId}/actions/{targetId} {
-      allow write: if request.auth != null && request.auth.uid == userId;
-      allow read:  if request.auth != null && (request.auth.uid == userId || request.auth.uid == targetId);
+      allow write: if isOwner(userId);
+      allow read:  if isAuth() &&
+        (request.auth.uid == userId || request.auth.uid == targetId);
     }
+
+    // ─── Blocks ───────────────────────────────────────────
+    match /blocks/{userId}/blocked/{targetId} {
+      allow read, write, delete: if isOwner(userId);
+    }
+
+    // ─── Reports ──────────────────────────────────────────
+    match /reports/{reportId} {
+      allow create: if isAuth() &&
+        request.resource.data.reportedBy == request.auth.uid;
+      allow read:   if false; // Somente admin (Cloud Functions)
+      allow update, delete: if false;
+    }
+
+    // ─── Stories ─────────────────────────────────────────
+    match /stories/{storyId} {
+      allow read: if isAuth();
+      allow create: if isAuth() &&
+        request.resource.data.uid == request.auth.uid;
+      allow update: if isAuth() && (
+        // Dono pode deletar/editar
+        resource.data.uid == request.auth.uid ||
+        // Outros só podem adicionar próprio UID em views ou reactions
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['views', 'reactions'])
+      );
+      allow delete: if isAuth() && resource.data.uid == request.auth.uid;
+    }
+
   }
 }

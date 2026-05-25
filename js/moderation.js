@@ -12,6 +12,15 @@ import { showToast } from './ui.js?v=7';
 
 const fsTimeout = (ms = 8000) => new Promise((_, r) => setTimeout(() => r(new Error('Timeout')), ms));
 
+function esc(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
 // ─── Block User ───────────────────────────────────────────
 export async function blockUser(currentUid, targetUid) {
   const ref = doc(db, 'blocks', currentUid, 'blocked', targetUid);
@@ -70,6 +79,10 @@ export async function reportUser(currentUid, targetUid, reason = 'other') {
 
 // ─── Report Modal HTML ────────────────────────────────────
 export function renderReportModal(currentUid, targetUid, targetName) {
+  const safeCurrentUid = esc(currentUid);
+  const safeTargetUid  = esc(targetUid);
+  const safeName       = esc(targetName || 'usuário');
+
   const reasons = [
     { id: 'fake',        label: '🚫 Perfil falso / spam' },
     { id: 'harassment',  label: '⚠️ Assédio ou intimidação' },
@@ -82,7 +95,7 @@ export function renderReportModal(currentUid, targetUid, targetName) {
   return `
     <div style="padding:24px;max-width:400px;width:100%">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
-        <h3 style="font-family:var(--font-display);font-size:1.1rem;font-weight:800;margin:0">Denunciar ${targetName || 'usuário'}</h3>
+        <h3 style="font-family:var(--font-display);font-size:1.1rem;font-weight:800;margin:0">Denunciar ${safeName}</h3>
         <button onclick="document.querySelector('.modal-overlay')?.remove()"
           style="width:32px;height:32px;border-radius:50%;background:var(--glass-bg);border:1px solid var(--glass-border);cursor:pointer;color:var(--text-primary);font-size:1rem;display:flex;align-items:center;justify-content:center">✕</button>
       </div>
@@ -90,14 +103,15 @@ export function renderReportModal(currentUid, targetUid, targetName) {
       <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
         ${reasons.map(r => `
           <label style="display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--radius-md);border:1px solid var(--glass-border);cursor:pointer;background:var(--bg-card)" class="report-option">
-            <input type="radio" name="report-reason" value="${r.id}" style="accent-color:var(--primary)">
+            <input type="radio" name="report-reason" value="${esc(r.id)}" style="accent-color:var(--primary)">
             <span style="font-size:0.9rem">${r.label}</span>
           </label>
         `).join('')}
       </div>
       <div style="display:flex;gap:10px">
         <button class="btn btn-ghost" style="flex:1" onclick="document.querySelector('.modal-overlay')?.remove()">Cancelar</button>
-        <button class="btn btn-primary" style="flex:1;background:var(--danger);border-color:var(--danger)" onclick="window._submitReport('${currentUid}','${targetUid}','${targetName || ''}')">
+        <button class="btn btn-primary" id="report-submit-btn" style="flex:1;background:var(--danger);border-color:var(--danger)"
+          data-current="${safeCurrentUid}" data-target="${safeTargetUid}">
           Denunciar
         </button>
       </div>
