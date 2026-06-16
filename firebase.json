@@ -7,6 +7,7 @@
       "**/node_modules/**",
       "firestore.rules",
       "storage.rules",
+      "functions/**",
       "README.md"
     ],
     "rewrites": [
@@ -42,5 +43,12 @@
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
-  }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "runtime": "nodejs20"
+    }
+  ]
 }

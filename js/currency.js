@@ -32,6 +32,17 @@ export function isStripeConfigured() {
   return SPARKS_PACKAGES.some(p => p.stripeLink);
 }
 
+// ─── Build Stripe Checkout URL ────────────────────────────
+// Anexa client_reference_id=<uid> ao Payment Link para que a Cloud
+// Function `stripeWebhook` saiba quem creditar quando o pagamento
+// for confirmado (ver functions/index.js). Sem isso o webhook não
+// tem como saber a quem os Sparks pertencem.
+export function buildStripeCheckoutUrl(pkg, uid) {
+  const url = new URL(pkg.stripeLink);
+  url.searchParams.set('client_reference_id', uid);
+  return url.toString();
+}
+
 // Costs for actions
 export const SPARKS_COSTS = {
   unlockPhoto:    5,
@@ -82,6 +93,12 @@ export async function deductSparks(uid, amount, description = '') {
 }
 
 // ─── Add Sparks ───────────────────────────────────────────
+// ATENÇÃO: desde o reforço de firestore.rules, o cliente NUNCA pode
+// aumentar o próprio saldo de `sparks` — apenas a Cloud Function
+// `stripeWebhook` (Admin SDK) pode. Esta função e `purchaseSparks()`
+// abaixo agora só têm efeito real quando chamadas com privilégios de
+// admin (ex.: console do Firebase / scripts internos); chamadas pelo
+// app do usuário final vão falhar com "permission-denied" por design.
 export async function addSparks(uid, amount, description = '') {
   await Promise.race([updateDoc(doc(db, 'users', uid), { sparks: increment(amount) }), fsTimeout()]);
   addDoc(collection(db, 'transactions'), {
@@ -92,7 +109,10 @@ export async function addSparks(uid, amount, description = '') {
   showToast(`+${amount} Sparks adicionados! ✨`, 'gold');
 }
 
-// ─── Simulate Purchase (mock — integrate Stripe later) ────
+// ─── Crédito direto (apenas privilegiado — ver nota acima) ─
+// O fluxo real de compra do usuário final é: app.js redireciona para
+// buildStripeCheckoutUrl() → Stripe Checkout → stripeWebhook credita.
+// Esta função não é mais chamada nesse caminho.
 export async function purchaseSparks(uid, packageId) {
   const pkg = SPARKS_PACKAGES.find(p => p.id === packageId);
   if (!pkg) return;

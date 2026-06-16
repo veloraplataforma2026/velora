@@ -20,7 +20,7 @@ import {
 } from './swipe.js?v=7';
 import { subscribeToChat, sendMessage, renderMessages, typingIndicatorHTML, MESSAGE_SUGGESTIONS } from './chat.js?v=7';
 import { uploadPhoto, getUserGallery, togglePhotoLock, unlockPhoto, deletePhoto, renderGalleryGrid } from './gallery.js?v=7';
-import { getBalance, purchaseSparks, updateSparksDisplay, renderStoreHTML, SPARKS_PACKAGES, hasSparks, deductSparks, SPARKS_COSTS } from './currency.js?v=7';
+import { getBalance, updateSparksDisplay, renderStoreHTML, SPARKS_PACKAGES, hasSparks, deductSparks, SPARKS_COSTS, buildStripeCheckoutUrl } from './currency.js?v=7';
 import { analytics } from './analytics.js?v=7';
 import { blockUser, reportUser, getBlockedUids, renderReportModal } from './moderation.js?v=7';
 import { addStory, getActiveStories, viewStory, reactToStory, deleteStory, renderStoriesBar, renderStoryViewer } from './stories.js?v=7';
@@ -1426,24 +1426,18 @@ function setupGlobalHandlers() {
     const pkg = SPARKS_PACKAGES.find(p => p.id === pkgId);
     if (!pkg) return;
 
-    // Se o link do Stripe estiver configurado, redireciona para o checkout
+    // Se o link do Stripe estiver configurado, redireciona para o checkout.
+    // client_reference_id=uid é o que permite à Cloud Function `stripeWebhook`
+    // saber quem creditar quando o pagamento for confirmado pelo Stripe.
     if (pkg.stripeLink) {
-      sessionStorage.removeItem('velora_stripe_credited_' + pkgId);
-      window.location.href = pkg.stripeLink;
+      window.location.href = buildStripeCheckoutUrl(pkg, uid);
       return;
     }
 
-    // Modo demo: adiciona Sparks diretamente sem pagamento
-    const allPkgEls = document.querySelectorAll('.sparks-package');
-    allPkgEls.forEach(el => el.style.pointerEvents = 'none');
-    try {
-      await purchaseSparks(uid, pkgId);
-      updateSparksDisplay();
-    } catch (err) {
-      showToast('Erro ao adicionar Sparks: ' + (err.message || 'Tente novamente'), 'error');
-    } finally {
-      allPkgEls.forEach(el => el.style.pointerEvents = '');
-    }
+    // Sem link do Stripe configurado: não há como cobrar de verdade, então
+    // não há crédito "demo" — as regras do Firestore bloqueiam o cliente de
+    // aumentar o próprio saldo. Avisa em vez de tentar (e falhar) um crédito direto.
+    showToast('Este pacote ainda não tem checkout configurado.', 'error');
   };
 
   window._galleryPhotoClick = async (photoId) => {
@@ -2596,21 +2590,30 @@ export async function boot() {
             document.body.prepend(banner);
           }, 2000);
         }
-        // Creditar Sparks após retorno do Stripe
+        // Retorno do Stripe: o crédito de Sparks é feito pelo backend
+        // (Cloud Function `stripeWebhook`), depois que o Stripe confirma o
+        // pagamento de verdade — o cliente nunca credita a si mesmo. Aqui só
+        // aguardamos a atualização do saldo chegar via Firestore em tempo real.
         if (_pendingStripePkg) {
-          const pkgId = _pendingStripePkg;
           _pendingStripePkg = null;
-          const sessionKey = `velora_stripe_${pkgId}_${Date.now().toString(36).slice(-4)}`;
-          if (!sessionStorage.getItem('velora_stripe_credited_' + pkgId)) {
-            sessionStorage.setItem('velora_stripe_credited_' + pkgId, '1');
-            try {
-              await purchaseSparks(user.uid, pkgId);
-              const pkg = SPARKS_PACKAGES.find(p => p.id === pkgId);
-              showToast(`✅ Pagamento confirmado! +${pkg?.sparks || '?'} Sparks adicionados!`, 'gold');
-            } catch (err) {
-              showToast('Erro ao creditar Sparks após pagamento: ' + err.message, 'error');
+          const startingBalance = VeloraState.currentUser?.profile?.sparks ?? 0;
+          showToast('Pagamento recebido! Confirmando com o Stripe...', 'info');
+
+          let waitTimeout;
+          const unsubWait = onSnapshot(doc(db, 'users', user.uid), (snap) => {
+            const sparks = snap.data()?.sparks;
+            if (typeof sparks === 'number' && sparks > startingBalance) {
+              if (VeloraState.currentUser?.profile) VeloraState.currentUser.profile.sparks = sparks;
+              updateSparksDisplay();
+              showToast(`✅ Pagamento confirmado! +${sparks - startingBalance} Sparks adicionados!`, 'gold');
+              clearTimeout(waitTimeout);
+              unsubWait();
             }
-          }
+          });
+          waitTimeout = setTimeout(() => {
+            unsubWait();
+            showToast('Pagamento em processamento. Seu saldo será atualizado em poucos instantes.', 'info');
+          }, 20000);
         }
       },
       () => { profilesLoaded = false; stopPresence(); }

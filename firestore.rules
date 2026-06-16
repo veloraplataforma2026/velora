@@ -9,19 +9,32 @@ service cloud.firestore {
     function isOwner(uid) {
       return isAuth() && request.auth.uid == uid;
     }
-    function notNegative(field) {
-      return !request.resource.data.keys().hasAll([field]) ||
-             request.resource.data[field] >= 0;
+    // Sparks só podem ser CRIADAS com o valor inicial padrão (50) e nunca
+    // aumentadas pelo cliente em um update — apenas reduzidas (gasto).
+    // Qualquer crédito real (compra confirmada) deve vir de uma Cloud
+    // Function com Admin SDK, que ignora estas regras.
+    function startingSparksOk() {
+      return !request.resource.data.keys().hasAny(['sparks']) ||
+             request.resource.data.sparks == 50;
+    }
+    function sparksNotIncreased() {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(['sparks']) ||
+             (request.resource.data.sparks >= 0 &&
+              request.resource.data.sparks <= resource.data.sparks);
     }
 
     // ─── Users ────────────────────────────────────────────
     // Leitura: apenas campos públicos (não e-mail, não fcmToken)
     match /users/{userId} {
       allow read: if isAuth();
-      allow create: if isOwner(userId);
+      allow create: if isOwner(userId)
+        && startingSparksOk()
+        // Impede que o cliente já se crie verificado
+        && (!request.resource.data.keys().hasAny(['verified']) ||
+             request.resource.data.verified == false);
       allow update: if isOwner(userId)
-        // Impede saldo negativo de SPARKS
-        && notNegative('sparks')
+        // Impede saldo negativo OU aumento de SPARKS pelo cliente
+        && sparksNotIncreased()
         // Impede que o cliente se auto-verifique
         && (!request.resource.data.keys().hasAll(['verified']) ||
              request.resource.data.verified == resource.data.verified);
@@ -114,6 +127,13 @@ service cloud.firestore {
         request.resource.data.reportedBy == request.auth.uid;
       allow read:   if false; // Somente admin (Cloud Functions)
       allow update, delete: if false;
+    }
+
+    // ─── Stripe Events (idempotência do webhook) ──────────
+    // Escrito apenas pela Cloud Function `stripeWebhook` via Admin SDK,
+    // que ignora estas regras. Nenhum cliente deve ler ou escrever aqui.
+    match /stripeEvents/{eventId} {
+      allow read, write: if false;
     }
 
     // ─── Stories ─────────────────────────────────────────
