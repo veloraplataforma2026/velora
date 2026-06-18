@@ -4,8 +4,8 @@
    Logout, and route protection
    ============================================================ */
 
-import { auth, db } from './firebase-config.js?v=7';
-import { uploadProfilePhoto, isCloudinaryConfigured } from './cloudinary.js?v=7';
+import { auth, db } from './firebase-config.js?v=8';
+import { uploadProfilePhoto, isCloudinaryConfigured } from './cloudinary.js?v=8';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -22,8 +22,8 @@ import {
   getDoc,
   serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { t } from './i18n.js?v=7';
-import { VeloraState } from './app.js?v=7';
+import { t } from './i18n.js?v=8';
+import { VeloraState } from './app.js?v=8';
 
 const googleProvider = new GoogleAuthProvider();
 

@@ -4,15 +4,15 @@
    Sistema de fotos bloqueadas por SPARKS
    ============================================================ */
 
-import { db } from './firebase-config.js?v=7';
+import { db } from './firebase-config.js?v=8';
 import {
   doc, collection, addDoc, getDocs, deleteDoc,
   updateDoc, getDoc, serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { showToast } from './ui.js?v=7';
-import { t } from './i18n.js?v=7';
-import { deductSparks, hasSparks } from './currency.js?v=7';
-import { uploadGalleryPhoto, isCloudinaryConfigured } from './cloudinary.js?v=7';
+import { showToast } from './ui.js?v=8';
+import { t } from './i18n.js?v=8';
+import { deductSparks, hasSparks } from './currency.js?v=8';
+import { uploadGalleryPhoto, isCloudinaryConfigured } from './cloudinary.js?v=8';
 
 const LOCKED_PHOTO_COST = 5;
 

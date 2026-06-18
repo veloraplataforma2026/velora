@@ -4,7 +4,7 @@
    ============================================================ */
 
 import { getAnalytics, logEvent as _logEvent } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-analytics.js';
-import app from './firebase-config.js?v=7';
+import app from './firebase-config.js?v=8';
 
 let _analytics = null;
 

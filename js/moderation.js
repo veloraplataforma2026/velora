@@ -3,12 +3,12 @@
    Block users, report users, filter blocked from feed
    ============================================================ */
 
-import { db } from './firebase-config.js?v=7';
+import { db } from './firebase-config.js?v=8';
 import {
   doc, setDoc, getDoc, getDocs,
   collection, query, where, serverTimestamp,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { showToast } from './ui.js?v=7';
+import { showToast } from './ui.js?v=8';
 
 const fsTimeout = (ms = 8000) => new Promise((_, r) => setTimeout(() => r(new Error('Timeout')), ms));
 

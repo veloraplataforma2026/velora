@@ -5,13 +5,13 @@
    unmatch functionality
    ============================================================ */
 
-import { db } from './firebase-config.js?v=7';
+import { db } from './firebase-config.js?v=8';
 import {
   collection, doc, setDoc, getDoc, getDocs,
   query, where, onSnapshot,
   serverTimestamp, limit,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { showToast } from './ui.js?v=7';
+import { showToast } from './ui.js?v=8';
 
 // ─── Swipe Card Engine ────────────────────────────────────
 export class SwipeEngine {

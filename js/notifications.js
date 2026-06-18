@@ -3,9 +3,9 @@
    Request permission, store FCM token, handle foreground msgs
    ============================================================ */
 
-import { db } from './firebase-config.js?v=7';
+import { db } from './firebase-config.js?v=8';
 import { doc, updateDoc } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { showToast } from './ui.js?v=7';
+import { showToast } from './ui.js?v=8';
 
 // VAPID public key from Firebase Console → Project Settings → Cloud Messaging
 const VAPID_KEY = 'BBG2twdX5vIMxgm3kUAxfkgLBcT2D0DHHbwwxh1Gf0au4HUsGUAJRWUMwyMRqGb0b1z76HckVSOEjQXBhx4W9-A';
@@ -16,7 +16,7 @@ async function getMessaging() {
   if (_messaging) return _messaging;
   try {
     const { getMessaging: _getMsg } = await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js');
-    const { default: app } = await import('./firebase-config.js?v=7');
+    const { default: app } = await import('./firebase-config.js?v=8');
     _messaging = _getMsg(app);
   } catch {
     _messaging = null;

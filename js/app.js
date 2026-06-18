@@ -3,28 +3,28 @@
    SPA routing, global state, page orchestration
    ============================================================ */
 
-import { i18n, t, LANGUAGES } from './i18n.js?v=7';
-import { auth, db } from './firebase-config.js?v=7';
+import { i18n, t, LANGUAGES } from './i18n.js?v=8';
+import { auth, db } from './firebase-config.js?v=8';
 import {
   initAuthObserver, logoutUser, getUserProfile, updateUserProfile,
   loginWithEmail, loginWithGoogle, registerWithEmail, resendEmailVerification,
-} from './auth.js?v=7';
+} from './auth.js?v=8';
 import {
   showPage, showToast, showModal, showConfirm,
   showMatchPopup, launchConfetti, initParticles,
   svgIcon, defaultAvatar, veloraScoreRing, registerPage, getAge, formatTime,
-} from './ui.js?v=7';
+} from './ui.js?v=8';
 import {
   SwipeEngine, loadProfiles, recordSwipe,
   subscribeToMatches, unmatch,
-} from './swipe.js?v=7';
-import { subscribeToChat, sendMessage, renderMessages, typingIndicatorHTML, MESSAGE_SUGGESTIONS } from './chat.js?v=7';
-import { uploadPhoto, getUserGallery, togglePhotoLock, unlockPhoto, deletePhoto, renderGalleryGrid } from './gallery.js?v=7';
-import { getBalance, updateSparksDisplay, renderStoreHTML, SPARKS_PACKAGES, hasSparks, deductSparks, SPARKS_COSTS, buildStripeCheckoutUrl } from './currency.js?v=7';
-import { analytics } from './analytics.js?v=7';
-import { blockUser, reportUser, getBlockedUids, renderReportModal } from './moderation.js?v=7';
-import { addStory, getActiveStories, viewStory, reactToStory, deleteStory, renderStoriesBar, renderStoryViewer } from './stories.js?v=7';
-import { requestNotificationPermission, initForegroundMessages, getNotificationStatus } from './notifications.js?v=7';
+} from './swipe.js?v=8';
+import { subscribeToChat, sendMessage, renderMessages, typingIndicatorHTML, MESSAGE_SUGGESTIONS } from './chat.js?v=8';
+import { uploadPhoto, getUserGallery, togglePhotoLock, unlockPhoto, deletePhoto, renderGalleryGrid } from './gallery.js?v=8';
+import { getBalance, updateSparksDisplay, renderStoreHTML, SPARKS_PACKAGES, hasSparks, deductSparks, SPARKS_COSTS, buildStripeCheckoutUrl } from './currency.js?v=8';
+import { analytics } from './analytics.js?v=8';
+import { blockUser, reportUser, getBlockedUids, renderReportModal } from './moderation.js?v=8';
+import { addStory, getActiveStories, viewStory, reactToStory, deleteStory, renderStoriesBar, renderStoryViewer } from './stories.js?v=8';
+import { requestNotificationPermission, initForegroundMessages, getNotificationStatus } from './notifications.js?v=8';
 import {
   collection, doc, addDoc, getDocs, onSnapshot, setDoc, updateDoc,
   query, where, orderBy, serverTimestamp, getDoc, limit,
@@ -1536,7 +1536,7 @@ function setupGlobalHandlers() {
     try {
       let photoURL = VeloraState.currentUser?.profile?.photoURL;
       if (window._editPhotoFile) {
-        const { uploadProfilePhoto } = await import('./cloudinary.js?v=7');
+        const { uploadProfilePhoto } = await import('./cloudinary.js?v=8');
         showToast('Enviando foto...', 'info');
         photoURL = await uploadProfilePhoto(uid, window._editPhotoFile);
         window._editPhotoFile = null;

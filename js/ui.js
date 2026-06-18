@@ -4,7 +4,7 @@
    particle system, confetti, and common UI helpers
    ============================================================ */
 
-import { t } from './i18n.js?v=7';
+import { t } from './i18n.js?v=8';
 
 // ─── Page Router ──────────────────────────────────────────
 const pages = new Map();

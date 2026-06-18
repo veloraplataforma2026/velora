@@ -3,7 +3,7 @@
    Balance management, purchase packages, transaction history
    ============================================================ */
 
-import { db } from './firebase-config.js?v=7';
+import { db } from './firebase-config.js?v=8';
 import {
   doc, getDoc, updateDoc, addDoc, collection,
   serverTimestamp, query, where, getDocs, increment, limit,
@@ -11,9 +11,9 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 
 const fsTimeout = (ms = 10000) => new Promise((_, r) => setTimeout(() => r(new Error('Timeout na operação.')), ms));
-import { VeloraState } from './app.js?v=7';
-import { showToast } from './ui.js?v=7';
-import { t } from './i18n.js?v=7';
+import { VeloraState } from './app.js?v=8';
+import { showToast } from './ui.js?v=8';
+import { t } from './i18n.js?v=8';
 
 // ─── Packages ─────────────────────────────────────────────
 // stripeLink: Cole o URL do Payment Link gerado no painel do Stripe.

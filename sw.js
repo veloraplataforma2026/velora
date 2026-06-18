@@ -3,28 +3,28 @@
    PWA: offline support, asset caching, push notifications
    ============================================================ */
 
-const CACHE_NAME = 'velora-v1';
+const CACHE_NAME = 'velora-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/css/main.css?v=7',
-  '/css/components.css?v=7',
-  '/css/animations.css?v=7',
-  '/js/app.js?v=7',
-  '/js/firebase-config.js?v=7',
-  '/js/auth.js?v=7',
-  '/js/ui.js?v=7',
-  '/js/swipe.js?v=7',
-  '/js/chat.js?v=7',
-  '/js/gallery.js?v=7',
-  '/js/currency.js?v=7',
-  '/js/profile.js?v=7',
-  '/js/i18n.js?v=7',
-  '/js/cloudinary.js?v=7',
-  '/js/analytics.js?v=7',
-  '/js/notifications.js?v=7',
-  '/js/moderation.js?v=7',
-  '/js/stories.js?v=7',
+  '/css/main.css?v=8',
+  '/css/components.css?v=8',
+  '/css/animations.css?v=8',
+  '/js/app.js?v=8',
+  '/js/firebase-config.js?v=8',
+  '/js/auth.js?v=8',
+  '/js/ui.js?v=8',
+  '/js/swipe.js?v=8',
+  '/js/chat.js?v=8',
+  '/js/gallery.js?v=8',
+  '/js/currency.js?v=8',
+  '/js/profile.js?v=8',
+  '/js/i18n.js?v=8',
+  '/js/cloudinary.js?v=8',
+  '/js/analytics.js?v=8',
+  '/js/notifications.js?v=8',
+  '/js/moderation.js?v=8',
+  '/js/stories.js?v=8',
   '/assets/icon.svg',
 ];
 

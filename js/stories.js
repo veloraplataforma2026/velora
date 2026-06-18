@@ -3,14 +3,14 @@
    24h photo stories (Instagram-style)
    ============================================================ */
 
-import { db } from './firebase-config.js?v=7';
+import { db } from './firebase-config.js?v=8';
 import {
   collection, doc, addDoc, getDocs, updateDoc,
   query, where, orderBy, serverTimestamp, deleteDoc, arrayUnion,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { uploadToCloudinary } from './cloudinary.js?v=7';
-import { VeloraState } from './app.js?v=7';
-import { showToast } from './ui.js?v=7';
+import { uploadToCloudinary } from './cloudinary.js?v=8';
+import { VeloraState } from './app.js?v=8';
+import { showToast } from './ui.js?v=8';
 
 const fsTimeout = (ms = 10000) => new Promise((_, r) => setTimeout(() => r(new Error('Timeout')), ms));
 

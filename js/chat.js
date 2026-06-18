@@ -4,13 +4,13 @@
    typing indicators, message reactions
    ============================================================ */
 
-import { db } from './firebase-config.js?v=7';
+import { db } from './firebase-config.js?v=8';
 import {
   collection, doc, addDoc, onSnapshot,
   query, orderBy, serverTimestamp, setDoc, getDoc,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { VeloraState } from './app.js?v=7';
-import { svgIcon, formatDate } from './ui.js?v=7';
+import { VeloraState } from './app.js?v=8';
+import { svgIcon, formatDate } from './ui.js?v=8';
 
 let unsubscribeChat = null;
 let typingTimeout = null;
