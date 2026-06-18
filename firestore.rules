@@ -71,10 +71,16 @@ service cloud.firestore {
 
     // ─── Posts ────────────────────────────────────────────
     match /posts/{postId} {
-      allow read:          if isAuth();
-      allow create:        if isAuth() &&
+      allow read:   if isAuth();
+      allow create: if isAuth() &&
         request.resource.data.authorId == request.auth.uid;
-      allow update, delete: if isAuth() &&
+      allow update: if isAuth() && (
+        // Autor pode editar qualquer campo
+        resource.data.authorId == request.auth.uid ||
+        // Outros usuários só podem atualizar likes e likedBy (curtir/descurtir)
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes', 'likedBy'])
+      );
+      allow delete: if isAuth() &&
         resource.data.authorId == request.auth.uid;
     }
 

@@ -139,6 +139,8 @@ export const translations = {
     verified: 'Verificado',
     dailyMission: 'Missão do Dia',
     streak: 'dias consecutivos',
+    // Time
+    timeNow: 'agora',
   },
 
   'pt-PT': {
@@ -249,6 +251,7 @@ export const translations = {
     verified: 'Verificado',
     dailyMission: 'Missão Diária',
     streak: 'dias consecutivos',
+    timeNow: 'agora',
   },
 
   'en': {
@@ -359,6 +362,7 @@ export const translations = {
     verified: 'Verified',
     dailyMission: 'Daily Mission',
     streak: 'day streak',
+    timeNow: 'now',
   },
 
   'es': {
@@ -405,6 +409,7 @@ export const translations = {
     veloraScore: 'VeloraScore™',
     verified: 'Verificado',
     errorGeneric: 'Algo salió mal. Inténtalo de nuevo.',
+    timeNow: 'ahora',
   },
 
   'fr': {
@@ -444,6 +449,7 @@ export const translations = {
     veloraScore: 'VeloraScore™',
     verified: 'Vérifié',
     errorGeneric: 'Une erreur est survenue. Veuillez réessayer.',
+    timeNow: 'maintenant',
   },
 
   'de': {
@@ -483,6 +489,7 @@ export const translations = {
     veloraScore: 'VeloraScore™',
     verified: 'Verifiziert',
     errorGeneric: 'Etwas ist schiefgelaufen. Bitte versuche es erneut.',
+    timeNow: 'jetzt',
   },
 };
 

@@ -25,6 +25,7 @@ const STATIC_ASSETS = [
   '/js/notifications.js?v=7',
   '/js/moderation.js?v=7',
   '/js/stories.js?v=7',
+  '/assets/icon.svg',
 ];
 
 self.addEventListener('install', (e) => {

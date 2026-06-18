@@ -8,7 +8,7 @@ import {
   collection, doc, addDoc, getDocs, updateDoc,
   query, where, orderBy, serverTimestamp, deleteDoc, arrayUnion,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-import { uploadProfilePhoto } from './cloudinary.js?v=7';
+import { uploadToCloudinary } from './cloudinary.js?v=7';
 import { VeloraState } from './app.js?v=7';
 import { showToast } from './ui.js?v=7';
 
@@ -16,7 +16,7 @@ const fsTimeout = (ms = 10000) => new Promise((_, r) => setTimeout(() => r(new E
 
 // ─── Add Story ────────────────────────────────────────────
 export async function addStory(uid, file) {
-  const photoURL = await uploadProfilePhoto(uid, file);
+  const photoURL = await uploadToCloudinary(file, `velora/stories/${uid}`);
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
   const profile = VeloraState.currentUser?.profile;
 

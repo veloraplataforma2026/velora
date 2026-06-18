@@ -12,7 +12,7 @@ import {
 import {
   showPage, showToast, showModal, showConfirm,
   showMatchPopup, launchConfetti, initParticles,
-  svgIcon, defaultAvatar, veloraScoreRing, registerPage, getAge,
+  svgIcon, defaultAvatar, veloraScoreRing, registerPage, getAge, formatTime,
 } from './ui.js?v=7';
 import {
   SwipeEngine, loadProfiles, recordSwipe,
@@ -28,13 +28,16 @@ import { requestNotificationPermission, initForegroundMessages, getNotificationS
 import {
   collection, doc, addDoc, getDocs, onSnapshot, setDoc, updateDoc,
   query, where, orderBy, serverTimestamp, getDoc, limit,
+  increment, arrayUnion, arrayRemove,
 } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { deleteUser } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 
 // ─── Global State ─────────────────────────────────────────
 export const VeloraState = {
   currentUser:    null,
   matchesUnsub:   null,
   chatUnsub:      null,
+  _feedUnsub:     null,
   activeConvId:   null,
   profiles:       [],
   currentCardIdx: 0,
@@ -671,7 +674,7 @@ function renderChatPage(convId, otherId) {
 
       <!-- Suggestions -->
       <div id="chat-suggestions" style="display:flex;gap:8px;padding:8px 16px;overflow-x:auto;scrollbar-width:none">
-        ${(MESSAGE_SUGGESTIONS['pt-BR'] || []).map(s => `
+        ${(MESSAGE_SUGGESTIONS[i18n.getCurrentLang()] || MESSAGE_SUGGESTIONS['pt-BR'] || []).map(s => `
           <button class="tag" style="white-space:nowrap;font-size:0.82rem" onclick="window._sendSuggestion('${s}')">${s}</button>
         `).join('')}
       </div>
@@ -689,45 +692,51 @@ function renderChatPage(convId, otherId) {
   `;
 }
 
+// ─── POST CARD ────────────────────────────────────────────
+function renderPostCard(post, uid) {
+  const isLiked = (post.likedBy || []).includes(uid);
+  const timeStr = post.createdAt?.toDate ? formatTime(post.createdAt.toDate()) : t('timeNow');
+  return `
+    <div class="post-card">
+      <div class="post-card-header">
+        <div class="avatar avatar-md" style="background:var(--bg-surface);overflow:hidden">
+          <img src="${post.authorPhoto || defaultAvatar(post.authorName)}" style="width:100%;height:100%;object-fit:cover" alt="${post.authorName}">
+        </div>
+        <div style="flex:1">
+          <div style="font-family:var(--font-display);font-weight:700">${post.authorName}${post.authorAge ? `, ${post.authorAge}` : ''}</div>
+          <div style="font-size:0.78rem;color:var(--text-muted)">${timeStr}</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
+          <button class="btn btn-primary btn-sm" style="padding:6px 14px;font-size:0.8rem" onclick="window._quickLike('${post.id}')">
+            ${svgIcon('heart', 14)} Like
+          </button>
+          <button class="btn btn-ghost btn-sm" style="padding:6px 14px;font-size:0.8rem" onclick="window._quickPass('${post.id}')">
+            ${svgIcon('x', 14)} Pass
+          </button>
+        </div>
+      </div>
+      <div class="post-card-body">
+        <p style="font-size:0.95rem;line-height:1.5;color:var(--text-secondary)">${post.text}</p>
+      </div>
+      ${post.image ? `<img class="post-card-image" src="${post.image}" alt="Post image" loading="lazy">` : ''}
+      <div class="post-card-actions">
+        <button class="post-action-btn ${isLiked ? 'liked' : ''}" onclick="window._likePost('${post.id}', this)">
+          ${svgIcon('heart', 16)} <span>${post.likes || 0}</span>
+        </button>
+        <button class="post-action-btn" onclick="window._commentPost('${post.id}')">
+          ${svgIcon('chat', 16)} Comentar
+        </button>
+        <button class="post-action-btn" onclick="window._sharePost('${post.id}')">
+          ${svgIcon('send', 16)} Compartilhar
+        </button>
+      </div>
+    </div>
+  `;
+}
+
 // ─── FEED PAGE ────────────────────────────────────────────
 function renderFeed() {
   const sparks = VeloraState.currentUser?.profile?.sparks || 0;
-  const MOCK_POSTS = [
-    {
-      id: 'p1',
-      authorName: 'Sofia Martins',
-      authorPhoto: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=100&q=80',
-      authorAge: 26,
-      text: 'Fim de semana incrível na praia! Quem mais ama o mar? 🌊☀️',
-      image: 'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&q=80',
-      likes: 47,
-      time: '2h',
-      veloraScore: 87,
-    },
-    {
-      id: 'p2',
-      authorName: 'Luna Ferreira',
-      authorPhoto: 'https://images.unsplash.com/photo-1567532939604-b6b5b0db2604?w=100&q=80',
-      authorAge: 23,
-      text: 'Observando estrelas é minha terapia favorita 🌟🔭 Alguém quer se juntar?',
-      image: null,
-      likes: 89,
-      time: '4h',
-      veloraScore: 95,
-    },
-    {
-      id: 'p3',
-      authorName: 'Valentina Rocha',
-      authorPhoto: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=100&q=80',
-      authorAge: 28,
-      text: 'Fiz um jantar especial hoje! Receita no perfil 🍳❤️',
-      image: 'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=400&q=80',
-      likes: 134,
-      time: '6h',
-      veloraScore: 78,
-    },
-  ];
-
   return `
     ${renderTopHeader(sparks)}
     <div class="page-content" style="padding:0 0 100px">
@@ -735,7 +744,7 @@ function renderFeed() {
       <div style="padding:var(--space-md) var(--space-lg);border-bottom:1px solid var(--glass-border)">
         <div style="display:flex;align-items:center;gap:var(--space-md)">
           <div class="avatar avatar-sm" style="background:var(--bg-surface);overflow:hidden">
-            <img src="${defaultAvatar(VeloraState.currentUser?.displayName || '?')}" style="width:100%;height:100%;object-fit:cover">
+            <img src="${defaultAvatar(VeloraState.currentUser?.profile?.photoURL ? '' : (VeloraState.currentUser?.displayName || '?'))}" style="width:100%;height:100%;object-fit:cover">
           </div>
           <button class="input-field" style="flex:1;text-align:left;color:var(--text-muted);cursor:pointer;padding:12px 16px" onclick="window._createPost()">
             ${t('whatsOnYourMind')}
@@ -745,44 +754,12 @@ function renderFeed() {
           </button>
         </div>
       </div>
-
-      <!-- Posts -->
-      ${MOCK_POSTS.map(post => `
-        <div class="post-card">
-          <div class="post-card-header">
-            <div class="avatar avatar-md" style="background:var(--bg-surface);overflow:hidden">
-              <img src="${post.authorPhoto}" style="width:100%;height:100%;object-fit:cover" alt="${post.authorName}">
-            </div>
-            <div style="flex:1">
-              <div style="font-family:var(--font-display);font-weight:700">${post.authorName}, ${post.authorAge}</div>
-              <div style="font-size:0.78rem;color:var(--text-muted)">${post.time} atrás</div>
-            </div>
-            <div style="display:flex;flex-direction:column;align-items:center;gap:6px">
-              <button class="btn btn-primary btn-sm" style="padding:6px 14px;font-size:0.8rem" onclick="window._quickLike('${post.id}')">
-                ${svgIcon('heart', 14)} Like
-              </button>
-              <button class="btn btn-ghost btn-sm" style="padding:6px 14px;font-size:0.8rem" onclick="window._quickPass('${post.id}')">
-                ${svgIcon('x', 14)} Pass
-              </button>
-            </div>
-          </div>
-          <div class="post-card-body">
-            <p style="font-size:0.95rem;line-height:1.5;color:var(--text-secondary)">${post.text}</p>
-          </div>
-          ${post.image ? `<img class="post-card-image" src="${post.image}" alt="Post image" loading="lazy">` : ''}
-          <div class="post-card-actions">
-            <button class="post-action-btn" id="like-btn-${post.id}" onclick="window._likePost('${post.id}', this)">
-              ${svgIcon('heart', 16)} <span>${post.likes}</span>
-            </button>
-            <button class="post-action-btn" onclick="window._commentPost('${post.id}')">
-              ${svgIcon('chat', 16)} Comentar
-            </button>
-            <button class="post-action-btn" onclick="window._sharePost('${post.id}')">
-              ${svgIcon('send', 16)} Compartilhar
-            </button>
-          </div>
+      <!-- Posts — preenchidos pelo handler pageReady via Firestore -->
+      <div id="feed-posts">
+        <div class="flex-center" style="height:200px;color:var(--text-muted);font-size:0.9rem">
+          ${svgIcon('discover', 16)} &nbsp; Carregando posts...
         </div>
-      `).join('')}
+      </div>
     </div>
     ${renderBottomNav('feed')}
   `;
@@ -1157,6 +1134,10 @@ function setupGlobalHandlers() {
     if (page !== 'matches' && VeloraState.matchesUnsub) {
       VeloraState.matchesUnsub();
       VeloraState.matchesUnsub = null;
+    }
+    if (page !== 'feed' && VeloraState._feedUnsub) {
+      VeloraState._feedUnsub();
+      VeloraState._feedUnsub = null;
     }
     switch (page) {
       case 'splash':    showPage('splash', data); break;
@@ -1880,11 +1861,22 @@ function setupGlobalHandlers() {
 
   window._unlockOrViewPhoto = (ownerUid, photoId) => window._openLightbox(ownerUid, photoId);
 
-  window._likePost = (postId, btn) => {
+  window._likePost = async (postId, btn) => {
+    const uid = VeloraState.currentUser?.uid;
+    if (!uid) return;
+    const isLiked = btn.classList.contains('liked');
     btn.classList.toggle('liked');
     const span = btn.querySelector('span');
-    const current = parseInt(span.textContent);
-    span.textContent = btn.classList.contains('liked') ? current + 1 : current - 1;
+    span.textContent = parseInt(span.textContent) + (isLiked ? -1 : 1);
+    try {
+      await updateDoc(doc(db, 'posts', postId), {
+        likes:   increment(isLiked ? -1 : 1),
+        likedBy: isLiked ? arrayRemove(uid) : arrayUnion(uid),
+      });
+    } catch {
+      btn.classList.toggle('liked');
+      span.textContent = parseInt(span.textContent) + (isLiked ? 1 : -1);
+    }
   };
 
   window._quickLike = (postId) => {
@@ -1907,19 +1899,38 @@ function setupGlobalHandlers() {
           <button class="btn btn-ghost btn-sm">${svgIcon('image', 16)} Foto</button>
           <button class="btn btn-ghost btn-sm">${svgIcon('location', 16)} Local</button>
         </div>
-        <button class="btn btn-primary btn-w-full" onclick="window._submitPost()">
+        <button id="post-submit-btn" class="btn btn-primary btn-w-full" onclick="window._submitPost()">
           ${t('publish')}
         </button>
       </div>
     `, { centered: true });
   };
 
-  window._submitPost = () => {
-    const text = document.getElementById('post-text')?.value;
-    if (!text?.trim()) return;
-    document.querySelector('.modal-overlay')?.remove();
-    showToast('Publicado com sucesso! ✨', 'success');
-    window._navigate('feed');
+  window._submitPost = async () => {
+    const uid = VeloraState.currentUser?.uid;
+    const profile = VeloraState.currentUser?.profile;
+    const text = document.getElementById('post-text')?.value?.trim();
+    if (!text) return;
+    const btn = document.getElementById('post-submit-btn');
+    if (btn) { btn.disabled = true; btn.textContent = '...'; }
+    try {
+      await addDoc(collection(db, 'posts'), {
+        authorId:    uid,
+        authorName:  profile?.displayName || VeloraState.currentUser?.displayName || 'Anônimo',
+        authorPhoto: profile?.photoURL || null,
+        authorAge:   profile?.age || null,
+        text,
+        image:       null,
+        likes:       0,
+        likedBy:     [],
+        createdAt:   serverTimestamp(),
+      });
+      document.querySelector('.modal-overlay')?.remove();
+      showToast('Publicado com sucesso! ✨', 'success');
+    } catch (err) {
+      showToast('Erro ao publicar. Tente novamente.', 'error');
+      if (btn) { btn.disabled = false; btn.textContent = t('publish'); }
+    }
   };
 
   window._sendSuggestion = (text) => {
@@ -1929,8 +1940,28 @@ function setupGlobalHandlers() {
   };
 
   window._confirmDeleteAccount = async () => {
-    const confirmed = await showConfirm('Excluir conta', 'Esta ação é irreversível. Todos os seus dados serão perdidos.', 'Sim, excluir conta');
-    if (confirmed) showToast('Funcionalidade em implementação.', 'info');
+    const confirmed = await showConfirm(
+      'Excluir conta',
+      'Esta ação é irreversível. Todos os seus dados serão perdidos permanentemente.',
+      'Sim, excluir conta'
+    );
+    if (!confirmed) return;
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+      stopPresence();
+      await deleteUser(user);
+      showToast('Conta excluída com sucesso.', 'success');
+      showPage('splash');
+    } catch (err) {
+      if (err.code === 'auth/requires-recent-login') {
+        showToast('Por segurança, faça login novamente antes de excluir a conta.', 'error');
+        await logoutUser();
+        showPage('login');
+      } else {
+        showToast('Erro ao excluir conta. Tente novamente.', 'error');
+      }
+    }
   };
 }
 
@@ -2219,17 +2250,6 @@ function initPageHandlers() {
             } catch { /* demo mode */ }
           }
 
-          // Simulate match in demo mode
-          if (uid === 'demo' && action === 'like' && Math.random() > 0.5) {
-            const myPhoto = VeloraState.currentUser?.profile?.photoURL;
-            setTimeout(() => {
-              showMatchPopup(myPhoto, profile.photoURL, profile.displayName,
-                () => showToast('Chat disponível após login!', 'info'),
-                () => {}
-              );
-            }, 500);
-          }
-
           // Load next card after delay
           setTimeout(() => {
             if (VeloraState.currentCardIdx < profiles.length) {
@@ -2245,6 +2265,29 @@ function initPageHandlers() {
         });
         engine.attach(topCard);
         VeloraState.swipeEngine = engine;
+      }
+    }
+
+    if (pageId === 'feed') {
+      const uid = VeloraState.currentUser?.uid;
+      const feedEl = el.querySelector('#feed-posts');
+      if (uid && feedEl) {
+        if (VeloraState._feedUnsub) VeloraState._feedUnsub();
+        const postsQ = query(
+          collection(db, 'posts'),
+          orderBy('createdAt', 'desc'),
+          limit(30)
+        );
+        VeloraState._feedUnsub = onSnapshot(postsQ, (snap) => {
+          if (!feedEl.isConnected) return;
+          if (snap.empty) {
+            feedEl.innerHTML = `<div class="flex-center" style="height:200px;color:var(--text-muted);font-size:0.9rem">Nenhum post ainda. Seja o primeiro! 🌟</div>`;
+            return;
+          }
+          feedEl.innerHTML = snap.docs.map(d => renderPostCard({ id: d.id, ...d.data() }, uid)).join('');
+        }, () => {
+          if (feedEl.isConnected) feedEl.innerHTML = `<div class="flex-center" style="height:200px;color:var(--danger);font-size:0.9rem">Erro ao carregar posts.</div>`;
+        });
       }
     }
 

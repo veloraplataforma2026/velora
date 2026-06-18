@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" rx="108" fill="#050510"/>
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00F5D4"/>
+      <stop offset="100%" stop-color="#7C3CFF"/>
+    </linearGradient>
+  </defs>
+  <!-- Outer glow ring -->
+  <circle cx="256" cy="256" r="200" fill="none" stroke="url(#g)" stroke-width="2" opacity="0.18"/>
+  <!-- V lettermark -->
+  <polygon points="80,120 180,120 256,340 332,120 432,120 296,400 216,400" fill="url(#g)"/>
+</svg>

@@ -303,7 +303,7 @@ export function formatTime(date) {
   const hours = Math.floor(diff / 3600000);
   const days = Math.floor(diff / 86400000);
 
-  if (mins < 1) return 'agora';
+  if (mins < 1) return t('timeNow');
   if (mins < 60) return `${mins}min`;
   if (hours < 24) return `${hours}h`;
   if (days < 7) return `${days}d`;
