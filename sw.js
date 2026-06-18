@@ -1,97 +1,69 @@
 /* ============================================================
    VELORA — Service Worker
-   PWA: offline support, asset caching, push notifications
+   Estratégia: network-first sempre (sem cache de assets).
+   Cache só como fallback offline para navegação.
+   Push notifications mantidas.
    ============================================================ */
 
-const CACHE_NAME = 'velora-v2';
-const STATIC_ASSETS = [
-  '/',
-  '/index.html',
-  '/css/main.css?v=8',
-  '/css/components.css?v=8',
-  '/css/animations.css?v=8',
-  '/js/app.js?v=8',
-  '/js/firebase-config.js?v=8',
-  '/js/auth.js?v=8',
-  '/js/ui.js?v=8',
-  '/js/swipe.js?v=8',
-  '/js/chat.js?v=8',
-  '/js/gallery.js?v=8',
-  '/js/currency.js?v=8',
-  '/js/profile.js?v=8',
-  '/js/i18n.js?v=8',
-  '/js/cloudinary.js?v=8',
-  '/js/analytics.js?v=8',
-  '/js/notifications.js?v=8',
-  '/js/moderation.js?v=8',
-  '/js/stories.js?v=8',
-  '/assets/icon.svg',
-];
+const CACHE_NAME = 'velora-v3';
 
+// Ao instalar: limpa tudo, ativa imediatamente
 self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(STATIC_ASSETS)).then(() => self.skipWaiting())
-  );
+  e.waitUntil(self.skipWaiting());
 });
 
+// Ao ativar: apaga todos os caches antigos e assume controle
 self.addEventListener('activate', (e) => {
   e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    ).then(() => self.clients.claim())
+    caches.keys()
+      .then(keys => Promise.all(keys.map(k => caches.delete(k))))
+      .then(() => self.clients.claim())
   );
 });
 
-// Network-first for API/Firebase calls, cache-first for static assets
+// Fetch: network-first para tudo — sempre busca versão fresca do servidor
 self.addEventListener('fetch', (e) => {
+  if (e.request.method !== 'GET') return;
+
   const url = new URL(e.request.url);
 
-  // Skip non-GET and cross-origin Firebase/Cloudinary requests
-  if (e.request.method !== 'GET') return;
-  if (url.hostname.includes('firestore.googleapis.com')) return;
-  if (url.hostname.includes('identitytoolkit')) return;
-  if (url.hostname.includes('cloudinary.com')) return;
-  if (url.hostname.includes('stripe.com')) return;
+  // Deixa Firebase/Cloudinary/Stripe passarem sem interceptar
+  if (
+    url.hostname.includes('firestore.googleapis.com') ||
+    url.hostname.includes('identitytoolkit') ||
+    url.hostname.includes('cloudinary.com') ||
+    url.hostname.includes('stripe.com') ||
+    url.hostname.includes('gstatic.com')
+  ) return;
 
-  // Cache-first for same-origin assets
-  if (url.origin === self.location.origin) {
-    e.respondWith(
-      caches.match(e.request).then(cached => {
-        if (cached) return cached;
-        return fetch(e.request).then(response => {
-          if (response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
-          }
-          return response;
-        }).catch(() => {
-          // Offline fallback for navigation
-          if (e.request.mode === 'navigate') return caches.match('/index.html');
-        });
+  // Network-first: busca do servidor, cai no cache só se offline
+  e.respondWith(
+    fetch(e.request)
+      .then(response => {
+        // Guarda só o index.html para fallback offline de navegação
+        if (e.request.mode === 'navigate' && response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then(c => c.put('/index.html', clone));
+        }
+        return response;
       })
-    );
-    return;
-  }
-
-  // Network-first for Google Fonts
-  if (url.hostname.includes('fonts.')) {
-    e.respondWith(
-      fetch(e.request).catch(() => caches.match(e.request))
-    );
-  }
+      .catch(() => {
+        if (e.request.mode === 'navigate') return caches.match('/index.html');
+      })
+  );
 });
 
-// Push notification handler
+// ─── Push Notifications ───────────────────────────────────
 self.addEventListener('push', (e) => {
   if (!e.data) return;
   let data = {};
   try { data = e.data.json(); } catch { data = { title: 'VELORA', body: e.data.text() }; }
 
   const options = {
-    body:    data.body  || 'Você tem uma nova notificação!',
-    icon:    '/assets/icon-192.png',
-    badge:   '/assets/icon-192.png',
-    tag:     data.tag   || 'velora-notification',
+    body:    data.body    || 'Você tem uma nova notificação!',
+    icon:    '/assets/icon.svg',
+    badge:   '/assets/icon.svg',
+    tag:     data.tag     || 'velora-notification',
     data:    { url: data.url || '/' },
     vibrate: [200, 100, 200],
     actions: data.actions || [],
@@ -100,7 +72,7 @@ self.addEventListener('push', (e) => {
   e.waitUntil(self.registration.showNotification(data.title || 'VELORA', options));
 });
 
-// Click on notification → open or focus the app
+// ─── Notification Click ───────────────────────────────────
 self.addEventListener('notificationclick', (e) => {
   e.notification.close();
   const targetUrl = e.notification.data?.url || '/';
