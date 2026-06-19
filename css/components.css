@@ -324,16 +324,17 @@ select.input-field option {
 
 /* ─── Cards ──────────────────────────────────────────────── */
 .card {
-  background: var(--bg-card);
-  border: 1px solid rgba(255,255,255,0.09);
+  background: linear-gradient(135deg, rgba(20,16,52,0.9) 0%, rgba(14,12,40,0.9) 100%);
+  border: 1px solid rgba(139,92,246,0.2);
   border-radius: var(--radius-lg);
   overflow: hidden;
   transition: all var(--transition-base);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
 }
 
 .card-hover:hover {
-  border-color: rgba(139, 92, 246, 0.25);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px rgba(139,92,246,0.12);
+  border-color: rgba(0,245,212,0.35);
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5), 0 0 24px rgba(0,245,212,0.08);
   transform: translateY(-2px);
 }
 
@@ -854,18 +855,19 @@ select.input-field option {
   outline: none;
 }
 
-/* ─── Feed Post Card — mais espaçoso, borda sutil ────────── */
+/* ─── Feed Post Card ─────────────────────────────────────── */
 .post-card {
-  background: var(--bg-card);
-  border: 1px solid rgba(255,255,255,0.09);
+  background: linear-gradient(135deg, rgba(20,16,52,0.85) 0%, rgba(14,12,40,0.85) 100%);
+  border: 1px solid rgba(139,92,246,0.18);
   border-radius: var(--radius-lg);
   overflow: hidden;
   margin-bottom: var(--space-md);
   transition: border-color var(--transition-base), box-shadow var(--transition-base);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04);
 }
 .post-card:hover {
-  border-color: rgba(139,92,246,0.22);
-  box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(139,92,246,0.10);
+  border-color: rgba(0,245,212,0.3);
+  box-shadow: 0 8px 36px rgba(0,0,0,0.5), 0 0 20px rgba(0,245,212,0.06);
 }
 
 .post-card-header {
