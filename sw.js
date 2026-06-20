@@ -5,7 +5,7 @@
    Push notifications mantidas.
    ============================================================ */
 
-const CACHE_NAME = 'velora-v3';
+const CACHE_NAME = 'velora-v4';
 
 // Ao instalar: limpa tudo, ativa imediatamente
 self.addEventListener('install', (e) => {
