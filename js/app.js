@@ -472,119 +472,125 @@ function renderRegister() {
   `;
 }
 
-// ─── HOME (Swipe) PAGE ────────────────────────────────────
+// ─── TIKTOK SLIDE ─────────────────────────────────────────
+function renderTikTokSlide(p, idx, total) {
+  const online    = isUserOnline(p);
+  const interests = (p.interests || []).slice(0, 4);
+  return `
+    <div class="tiktok-slide" data-idx="${idx}" data-uid="${p.uid || ''}">
+      <img class="tiktok-bg" src="${p.photoURL || defaultAvatar(p.displayName)}" alt="${p.displayName}" loading="${idx === 0 ? 'eager' : 'lazy'}">
+      <div class="tiktok-grad"></div>
+
+      <!-- Score badge -->
+      <div class="tiktok-score-badge">${veloraScoreRing(p.veloraScore || 75, 48)}</div>
+
+      ${online ? `
+      <div class="tiktok-online-badge">
+        <div style="width:7px;height:7px;border-radius:50%;background:var(--success);box-shadow:0 0 8px var(--success)"></div>
+        <span style="font-size:0.72rem;color:var(--success);font-weight:700;font-family:var(--font-display)">Online</span>
+      </div>` : ''}
+
+      <!-- Info área inferior -->
+      <div class="tiktok-info">
+        <h2 class="tiktok-name">
+          ${p.displayName}${p.age ? `, ${p.age}` : ''}${p.verified ? ' <span style="color:var(--primary)">✓</span>' : ''}
+        </h2>
+        <div class="tiktok-loc">
+          ${svgIcon('location', 13)} ${p.kmAway || '?'} km ${p.city ? '· ' + p.city : ''}
+        </div>
+        ${p.bio ? `<p class="tiktok-bio">${p.bio.slice(0, 110)}${p.bio.length > 110 ? '...' : ''}</p>` : ''}
+        <div class="tiktok-chips">
+          ${interests.map(i => `<span class="tiktok-chip">${i}</span>`).join('')}
+          ${p.lookingFor?.includes('casual') ? `<span class="tiktok-chip" style="color:var(--secondary);border-color:rgba(255,149,0,0.35);background:rgba(255,149,0,0.12)">🔥 Casual</span>` : ''}
+        </div>
+        <button class="tiktok-profile-link" onclick="window._viewProfile('${p.uid || ''}')">
+          Ver perfil completo ${svgIcon('back', 12)}
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+// ─── HOME (Swipe) PAGE — TikTok Vertical ─────────────────
 function renderHome() {
   const user = VeloraState.currentUser;
   const sparks = user?.profile?.sparks || 0;
   const profiles = VeloraState.profiles;
-  const profile = profiles[VeloraState.currentCardIdx];
-  const nextProfile = profiles[VeloraState.currentCardIdx + 1];
+  const total = profiles.length;
 
-  const swipeActions = profile ? `
-    <div class="swipe-actions" id="swipe-actions">
-      <button class="swipe-btn swipe-btn-rewind" onclick="window._rewindSwipe()" title="Desfazer">
-        ${svgIcon('undo', 20)}
-      </button>
-      <button class="swipe-btn swipe-btn-pass" onclick="window._triggerPass()" title="${t('pass')}">
-        ${svgIcon('x', 28)}
-      </button>
-      <button class="swipe-btn swipe-btn-like" onclick="window._triggerLike()" title="${t('like')}">
-        ${svgIcon('heart', 30)}
-      </button>
-      <button class="swipe-btn swipe-btn-superlike" onclick="window._triggerSuperlike()" title="${t('superLike')}">
-        ${svgIcon('star', 22)}
-      </button>
-      <button class="swipe-btn" style="width:48px;height:48px;background:rgba(124,60,255,0.1);border:2px solid rgba(124,60,255,0.4);color:var(--accent);border-radius:50%" onclick="window._navigate('store')" title="Boost">
-        ${svgIcon('bolt', 20)}
-      </button>
-    </div>
-  ` : '';
-
-  const infoPanel = profile ? `
-    <div class="home-info-panel">
-      <div class="glass" style="border-radius:var(--radius-xl);overflow:hidden;margin-bottom:var(--space-md)">
-        <img src="${profile.photoURL || defaultAvatar(profile.displayName)}" style="width:100%;aspect-ratio:4/5;object-fit:cover;display:block" alt="${profile.displayName}">
-        <div style="padding:var(--space-lg)">
-          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-sm)">
-            <h2 style="font-family:var(--font-display);font-size:1.5rem;font-weight:800">
-              ${profile.displayName}, ${profile.age}
-              ${profile.verified ? '<span style="color:var(--primary);font-size:1rem"> ✓</span>' : ''}
-            </h2>
-            ${veloraScoreRing(profile.veloraScore || 75, 56)}
-          </div>
-          <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:var(--space-sm);display:flex;align-items:center;gap:6px">
-            ${svgIcon('location', 13)} ${profile.kmAway || '?'} ${t('kmAway')}
-          </div>
-          ${profile.bio ? `<p style="color:var(--text-secondary);font-size:0.9rem;line-height:1.55;margin-bottom:var(--space-md)">${profile.bio}</p>` : ''}
-          <div style="display:flex;flex-wrap:wrap;gap:6px">
-            ${(profile.interests || []).map(i => `<span class="tag">${i}</span>`).join('')}
-            ${profile.lookingFor?.includes('casual') ? `<span class="tag" style="border-color:var(--secondary);color:var(--secondary)">🔥 Casual</span>` : ''}
-          </div>
+  // Se sem perfis, mostra tela de espera
+  if (!total) {
+    return `
+      <div style="min-height:100vh;display:flex;flex-direction:column;background:var(--bg-deep)">
+        ${renderTopHeader(sparks)}
+        <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:var(--space-xl);text-align:center;gap:var(--space-lg)">
+          ${renderNoMoreCards()}
         </div>
+        ${renderBottomNav('home')}
       </div>
-      ${nextProfile ? `
-        <div style="font-size:0.78rem;color:var(--text-muted);font-family:var(--font-display);font-weight:600;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:var(--space-sm)">A seguir</div>
-        <div class="glass" style="border-radius:var(--radius-lg);overflow:hidden;display:flex;align-items:center;gap:var(--space-md);padding:var(--space-sm);cursor:pointer">
-          <img src="${nextProfile.photoURL || defaultAvatar(nextProfile.displayName)}" style="width:52px;height:52px;border-radius:var(--radius-md);object-fit:cover;flex-shrink:0" alt="${nextProfile.displayName}">
-          <div>
-            <div style="font-family:var(--font-display);font-weight:700;font-size:0.9rem">${nextProfile.displayName}, ${nextProfile.age}</div>
-            <div style="font-size:0.78rem;color:var(--text-muted)">${svgIcon('location', 11)} ${nextProfile.kmAway || '?'} km</div>
-          </div>
-          <div style="margin-left:auto;color:var(--text-muted)">${veloraScoreRing(nextProfile.veloraScore || 75, 36)}</div>
-        </div>
-      ` : ''}
-    </div>
-  ` : '';
+    `;
+  }
 
-  const firstName = (user?.profile?.displayName || user?.displayName || '').split(' ')[0] || 'Você';
-  const matchCount = VeloraState.matchCount || 0;
+  // Dots de progresso lateral
+  const maxDots = Math.min(total, 7);
+  const dots = Array.from({length: maxDots}, (_, i) =>
+    `<div class="tiktok-dot${i === 0 ? ' active' : ''}" data-dot="${i}"></div>`
+  ).join('');
 
   return `
-    ${renderTopHeader(sparks)}
-    <div class="page-content home-page" style="padding-bottom:100px">
+    <div class="tiktok-shell" id="tiktok-shell">
 
-      <!-- ── Hero ── -->
-      <div class="page-hero">
-        <div class="page-hero-eyebrow">✦ ${getGreeting()}, ${firstName}!</div>
-        <h1 class="page-hero-title">Encontre sua<br>conexão</h1>
-        <div class="page-hero-stats">
-          <div class="page-hero-stat">
-            <div class="page-hero-stat-value">${matchCount}</div>
-            <div class="page-hero-stat-label">Matches</div>
-          </div>
-          <div class="page-hero-stat-divider"></div>
-          <div class="page-hero-stat">
-            <div class="page-hero-stat-value">✨ ${sparks}</div>
-            <div class="page-hero-stat-label">Sparks</div>
-          </div>
-          <div class="page-hero-stat-divider"></div>
-          <div class="page-hero-stat">
-            <div class="page-hero-stat-value">${profiles.length || '?'}</div>
-            <div class="page-hero-stat-label">Perfis</div>
-          </div>
+      <!-- HUD topo -->
+      <div class="tiktok-hud" id="tiktok-hud">
+        <span class="tiktok-logo">VELORA</span>
+        <div class="tiktok-progress-pill" id="tiktok-progress">1 / ${total}</div>
+        <button class="tiktok-sparks-pill" onclick="window._navigate('store')">✨ ${sparks}</button>
+      </div>
+
+      <!-- Feed vertical scroll-snap -->
+      <div class="tiktok-feed" id="tiktok-feed">
+        ${profiles.map((p, i) => renderTikTokSlide(p, i, total)).join('')}
+        <!-- Slide final -->
+        <div class="tiktok-slide tiktok-slide-end">
+          <div style="font-size:4rem;margin-bottom:var(--space-lg)">🎉</div>
+          <h2 style="font-family:var(--font-display);font-size:1.8rem;font-weight:900;margin-bottom:var(--space-sm)">${t('noMoreProfiles') || 'Fim por hoje!'}</h2>
+          <p style="color:var(--text-muted);margin-bottom:var(--space-xl)">Volte mais tarde para mais perfis incríveis</p>
+          <button class="btn btn-primary btn-lg" onclick="window._navigate('discover')">
+            ${svgIcon('discover', 18)} Explorar
+          </button>
         </div>
       </div>
 
-      <div id="stories-bar-container" style="padding:var(--space-sm) 0;border-bottom:1px solid var(--glass-border);overflow-x:auto;-webkit-overflow-scrolling:touch">
-        <div style="display:flex;align-items:center;padding:0 var(--space-md);gap:4px;min-height:80px;color:var(--text-muted);font-size:0.8rem">
-          Carregando stories...
+      <!-- Botões de ação — direita (TikTok style) -->
+      <div class="tiktok-actions" id="tiktok-actions">
+        <div class="tiktok-action-item">
+          <button class="tiktok-action-btn tiktok-btn-pass" onclick="window._tiktokAction('pass')" title="${t('pass')}">
+            ${svgIcon('x', 22)}
+          </button>
+          <span class="tiktok-action-label">Passar</span>
+        </div>
+        <div class="tiktok-action-item">
+          <button class="tiktok-action-btn tiktok-btn-super" onclick="window._tiktokAction('superlike')" title="${t('superLike')}">
+            ${svgIcon('star', 20)}
+          </button>
+          <span class="tiktok-action-label">Super</span>
+        </div>
+        <div class="tiktok-action-item">
+          <button class="tiktok-action-btn tiktok-btn-like" onclick="window._tiktokAction('like')" title="${t('like')}">
+            ${svgIcon('heart', 24)}
+          </button>
+          <span class="tiktok-action-label">Curtir</span>
         </div>
       </div>
-      <div class="home-layout">
-        <div class="home-swipe-col">
-          <div id="swipe-deck" style="position:relative;width:100%;max-width:300px;margin:0 auto;min-height:380px">
-            ${profile ? renderProfileCard(profile, 0) : renderNoMoreCards()}
-            ${profiles[VeloraState.currentCardIdx + 1] ? `<div class="card-stack-2" style="position:absolute;inset:0;">${renderProfileCard(profiles[VeloraState.currentCardIdx + 1], 1, true)}</div>` : ''}
-            ${profiles[VeloraState.currentCardIdx + 2] ? `<div class="card-stack-3" style="position:absolute;inset:0;">${renderProfileCard(profiles[VeloraState.currentCardIdx + 2], 2, true)}</div>` : ''}
-          </div>
-          ${swipeActions}
-        </div>
-        ${infoPanel}
-      </div>
+
+      <!-- Dots laterais de progresso -->
+      <div class="tiktok-dots" id="tiktok-dots">${dots}</div>
+
+      ${renderBottomNav('home')}
     </div>
-    ${renderBottomNav('home')}
   `;
 }
+
 
 function renderProfileCard(profile, idx, isBackground = false) {
   const interests = (profile.interests || []).slice(0, 3);
@@ -1294,6 +1300,58 @@ function setupGlobalHandlers() {
     if (res.success) showToast('Link de recuperação enviado! Verifique seu e-mail.', 'success');
     else showToast(res.error, 'error');
     document.querySelector('.modal-overlay')?.remove();
+  };
+
+  // ── TikTok action handler ────────────────────────────────
+  window._tiktokAction = async (action) => {
+    const feed = document.getElementById('tiktok-feed');
+    if (!feed) return;
+    const slides = [...feed.querySelectorAll('.tiktok-slide:not(.tiktok-slide-end)')];
+    const idx = VeloraState.currentCardIdx;
+    const profile = VeloraState.profiles[idx];
+    if (!profile) return;
+
+    const uid = VeloraState.currentUser?.uid;
+    const btn = document.querySelector(`.tiktok-btn-${action === 'like' ? 'like' : action === 'pass' ? 'pass' : 'super'}`);
+
+    // Feedback visual no botão
+    if (btn) {
+      btn.style.transform = 'scale(0.82)';
+      setTimeout(() => { if (btn) btn.style.transform = ''; }, 200);
+    }
+
+    // Avança idx
+    VeloraState.currentCardIdx = Math.min(idx + 1, VeloraState.profiles.length);
+
+    // Atualiza HUD e dots
+    const prog = document.getElementById('tiktok-progress');
+    if (prog) prog.textContent = `${VeloraState.currentCardIdx + 1} / ${VeloraState.profiles.length}`;
+    document.querySelectorAll('.tiktok-dot').forEach((d, i) => d.classList.toggle('active', i === VeloraState.currentCardIdx));
+
+    // Rola para o próximo slide
+    const nextSlide = slides[idx + 1] || feed.querySelector('.tiktok-slide-end');
+    if (nextSlide) nextSlide.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+    // Registra o swipe no Firestore
+    if (uid && action !== 'pass') {
+      try {
+        const result = await recordSwipe(uid, profile.uid, action === 'superlike' ? 'superlike' : 'like');
+        if (result?.matched) {
+          analytics.logMatch(result.matchId);
+          const myPhoto = VeloraState.currentUser?.profile?.photoURL;
+          setTimeout(() => {
+            showMatchPopup(myPhoto, profile.photoURL, profile.displayName,
+              () => window._openChat(result.matchId, profile.uid),
+              () => {}
+            );
+          }, 500);
+        }
+      } catch { /* demo / sem conexão */ }
+    } else if (uid && action === 'pass') {
+      try { await recordSwipe(uid, profile.uid, 'pass'); } catch { }
+    }
+
+    analytics.logSwipe(action, profile.uid);
   };
 
   window._triggerLike = () => {
@@ -2283,60 +2341,36 @@ function initPageHandlers() {
     }
 
     if (pageId === 'home') {
-      // Load stories bar
-      const storiesContainer = el.querySelector('#stories-bar-container');
-      if (storiesContainer) {
-        getActiveStories().then(stories => {
-          if (!storiesContainer.isConnected) return;
-          const uid = VeloraState.currentUser?.uid || '';
-          storiesContainer.innerHTML = renderStoriesBar(stories, uid);
-        }).catch(() => {
-          if (storiesContainer.isConnected) storiesContainer.innerHTML = '';
-        });
-      }
+      // ── TikTok feed: IntersectionObserver para rastrear slide atual ──
+      const tikFeed = el.querySelector('#tiktok-feed');
+      if (tikFeed) {
+        VeloraState.currentCardIdx = 0;
+        const slides = [...tikFeed.querySelectorAll('.tiktok-slide:not(.tiktok-slide-end)')];
+        const total  = VeloraState.profiles.length;
+        const maxDots = Math.min(total, 7);
 
-      const topCard = el.querySelector('#top-card');
-      const profiles = VeloraState.profiles.length ? VeloraState.profiles : MOCK_PROFILES;
-      if (topCard && profiles.length > VeloraState.currentCardIdx) {
-        const engine = new SwipeEngine(el.querySelector('#swipe-deck'), async (action) => {
-          const profile = profiles[VeloraState.currentCardIdx];
-          VeloraState.currentCardIdx++;
-          const uid = VeloraState.currentUser?.uid || 'demo';
+        const observer = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.5) {
+              const idx = parseInt(entry.target.dataset.idx ?? '-1', 10);
+              if (idx < 0) return;
+              VeloraState.currentCardIdx = idx;
 
-          analytics.logSwipe(action, profile.uid);
+              // Atualiza progress pill
+              const prog = document.getElementById('tiktok-progress');
+              if (prog) prog.textContent = `${idx + 1} / ${total}`;
 
-          if (action !== 'pass' && uid !== 'demo') {
-            try {
-              const result = await recordSwipe(uid, profile.uid, action);
-              if (result.matched) {
-                analytics.logMatch(result.matchId);
-                const myPhoto = VeloraState.currentUser?.profile?.photoURL;
-                const theirPhoto = profile.photoURL;
-                setTimeout(() => {
-                  showMatchPopup(myPhoto, theirPhoto, profile.displayName,
-                    () => window._openChat(result.matchId, profile.uid),
-                    () => { VeloraState.currentCardIdx = 0; loadAndShowHome(); }
-                  );
-                }, 400);
-              }
-            } catch { /* demo mode */ }
-          }
-
-          // Load next card after delay
-          setTimeout(() => {
-            if (VeloraState.currentCardIdx < profiles.length) {
-              loadAndShowHome();
-            } else {
-              VeloraState.currentCardIdx = 0;
-              const deck = document.getElementById('swipe-deck');
-              if (deck) deck.innerHTML = renderNoMoreCards();
-              const actions = document.getElementById('swipe-actions');
-              if (actions) actions.style.display = 'none';
+              // Atualiza dots
+              const dotIdx = Math.floor((idx / total) * maxDots);
+              document.querySelectorAll('.tiktok-dot').forEach((d, i) =>
+                d.classList.toggle('active', i === dotIdx)
+              );
             }
-          }, 100);
-        });
-        engine.attach(topCard);
-        VeloraState.swipeEngine = engine;
+          });
+        }, { threshold: 0.5 });
+
+        slides.forEach(s => observer.observe(s));
+        tikFeed._veloraObserver = observer;
       }
     }
 
