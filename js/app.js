@@ -2095,6 +2095,74 @@ function setupGlobalHandlers() {
   };
 }
 
+// ─── DEMO PROFILES (visíveis quando não há usuários reais) ─
+const DEMO_PROFILES = [
+  {
+    uid: 'demo_1', displayName: 'Ana Carolina', age: 26,
+    photoURL: 'https://images.unsplash.com/photo-1529626455594-4ff0802cfb7e?w=600&h=900&fit=crop&auto=format',
+    bio: 'Amo viajar, fotografia e café coado. Procuro alguém para explorar a cidade! ☕',
+    interests: ['Fotografia', 'Viagens', 'Café', 'Música'],
+    kmAway: 2, city: 'São Paulo', veloraScore: 94, verified: true,
+    lookingFor: ['relationship'], isOnline: true, lastSeen: { seconds: Math.floor(Date.now()/1000) - 60 },
+  },
+  {
+    uid: 'demo_2', displayName: 'Mariana Silva', age: 24,
+    photoURL: 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?w=600&h=900&fit=crop&auto=format',
+    bio: 'Dançarina, amante de arte e culinária italiana. 🍝 Adoro novas experiências.',
+    interests: ['Dança', 'Arte', 'Culinária', 'Yoga'],
+    kmAway: 4, city: 'São Paulo', veloraScore: 88, verified: false,
+    lookingFor: ['casual', 'relationship'], isOnline: false,
+  },
+  {
+    uid: 'demo_3', displayName: 'Juliana Costa', age: 29,
+    photoURL: 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=600&h=900&fit=crop&auto=format',
+    bio: 'Engenheira de dia, guitarrista de noite. 🎸 Buscando alguém que curta rock e trilhas.',
+    interests: ['Música', 'Tecnologia', 'Trilhas', 'Gaming'],
+    kmAway: 7, city: 'São Paulo', veloraScore: 91, verified: true,
+    lookingFor: ['relationship'], isOnline: true, lastSeen: { seconds: Math.floor(Date.now()/1000) - 120 },
+  },
+  {
+    uid: 'demo_4', displayName: 'Beatriz Mendes', age: 23,
+    photoURL: 'https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?w=600&h=900&fit=crop&auto=format',
+    bio: 'Estudante de medicina. Apaixonada por séries, leitura e cachorros. 🐕',
+    interests: ['Leitura', 'Séries', 'Natureza', 'Animais'],
+    kmAway: 3, city: 'Guarulhos', veloraScore: 85, verified: false,
+    lookingFor: ['relationship'], isOnline: false,
+  },
+  {
+    uid: 'demo_5', displayName: 'Camila Rocha', age: 27,
+    photoURL: 'https://images.unsplash.com/photo-1520813792240-56fc4a3765a7?w=600&h=900&fit=crop&auto=format',
+    bio: 'Chef de cozinha criativa. Viajei 30 países e ainda tem muito chão! ✈️🍜',
+    interests: ['Culinária', 'Viagens', 'Cultura', 'Fotografia'],
+    kmAway: 9, city: 'São Paulo', veloraScore: 97, verified: true,
+    lookingFor: ['casual', 'relationship'], isOnline: true, lastSeen: { seconds: Math.floor(Date.now()/1000) - 30 },
+  },
+  {
+    uid: 'demo_6', displayName: 'Fernanda Lima', age: 25,
+    photoURL: 'https://images.unsplash.com/photo-1515023115689-589c33041d3c?w=600&h=900&fit=crop&auto=format',
+    bio: 'Professora de ioga e meditação. 🧘 Acredito em conexões genuínas e conversas profundas.',
+    interests: ['Yoga', 'Meditação', 'Natureza', 'Leitura'],
+    kmAway: 5, city: 'São Paulo', veloraScore: 82, verified: false,
+    lookingFor: ['relationship'], isOnline: false,
+  },
+  {
+    uid: 'demo_7', displayName: 'Isabela Torres', age: 28,
+    photoURL: 'https://images.unsplash.com/photo-1502767089025-6572583495f9?w=600&h=900&fit=crop&auto=format',
+    bio: 'Arquiteta apaixonada por design e arte urbana. 🏙️ Adora um bom museu e cinema independente.',
+    interests: ['Arte', 'Design', 'Cinema', 'Arquitetura'],
+    kmAway: 11, city: 'Santo André', veloraScore: 89, verified: true,
+    lookingFor: ['relationship'], isOnline: true, lastSeen: { seconds: Math.floor(Date.now()/1000) - 200 },
+  },
+  {
+    uid: 'demo_8', displayName: 'Larissa Nunes', age: 22,
+    photoURL: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&h=900&fit=crop&auto=format',
+    bio: 'Recém-formada em Marketing. Apaixonada por música ao vivo e fim de semana na praia. 🌊🎵',
+    interests: ['Música', 'Praia', 'Marketing', 'Fitness'],
+    kmAway: 15, city: 'São Paulo', veloraScore: 78, verified: false,
+    lookingFor: ['casual', 'relationship'], isOnline: false,
+  },
+];
+
 // ─── LOAD HOME ────────────────────────────────────────────
 let isLoadingHome = false;
 let profilesLoaded  = false;
@@ -2117,13 +2185,24 @@ async function loadAndShowHome() {
     if (loaded?.length) {
       profilesLoaded = true;
       VeloraState.profiles = loaded;
-      // Refresh deck only if user hasn't started swiping yet
-      if (VeloraState.currentCardIdx === 0 && document.getElementById('swipe-deck')) {
-        isLoadingHome = true;
-        try { showPage('home'); } finally { isLoadingHome = false; }
-      }
+    } else if (!VeloraState.profiles.length) {
+      // Sem usuários reais → usa perfis demo para demonstração
+      profilesLoaded = true;
+      VeloraState.profiles = DEMO_PROFILES;
     }
-  } catch { /* keep empty list */ }
+    // Atualiza o TikTok feed se ainda na tela inicial
+    if (VeloraState.currentCardIdx === 0 && document.getElementById('tiktok-feed')) {
+      isLoadingHome = true;
+      try { showPage('home'); } finally { isLoadingHome = false; }
+    }
+  } catch {
+    // Timeout ou erro → usa demo profiles
+    if (!VeloraState.profiles.length) {
+      VeloraState.profiles = DEMO_PROFILES;
+      isLoadingHome = true;
+      try { showPage('home'); } finally { isLoadingHome = false; }
+    }
+  }
 }
 
 // ─── PAGE INIT HANDLERS ───────────────────────────────────
