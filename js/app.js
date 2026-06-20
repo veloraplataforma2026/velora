@@ -79,6 +79,16 @@ function isUserOnline(profile) {
   return (Date.now() / 1000 - secs) < 600;
 }
 
+function getGreeting() {
+  const h = new Date().getHours();
+  const lang = i18n.getCurrentLang();
+  if (lang === 'en') return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
+  if (lang === 'es') return h < 12 ? 'Buenos días' : h < 18 ? 'Buenas tardes' : 'Buenas noches';
+  if (lang === 'fr') return h < 12 ? 'Bonjour' : h < 18 ? 'Bonjour' : 'Bonsoir';
+  if (lang === 'de') return h < 12 ? 'Guten Morgen' : h < 18 ? 'Guten Tag' : 'Guten Abend';
+  return h < 12 ? 'Bom dia' : h < 18 ? 'Boa tarde' : 'Boa noite';
+}
+
 // ─── Stripe Payment Return Detection ─────────────────────
 // Detecta ?payment=success&pkg=X ao voltar do checkout do Stripe
 const _stripeParams = new URLSearchParams(window.location.search);
@@ -526,9 +536,35 @@ function renderHome() {
     </div>
   ` : '';
 
+  const firstName = (user?.profile?.displayName || user?.displayName || '').split(' ')[0] || 'Você';
+  const matchCount = VeloraState.matchCount || 0;
+
   return `
     ${renderTopHeader(sparks)}
     <div class="page-content home-page" style="padding-bottom:100px">
+
+      <!-- ── Hero ── -->
+      <div class="page-hero">
+        <div class="page-hero-eyebrow">✦ ${getGreeting()}, ${firstName}!</div>
+        <h1 class="page-hero-title">Encontre sua<br>conexão</h1>
+        <div class="page-hero-stats">
+          <div class="page-hero-stat">
+            <div class="page-hero-stat-value">${matchCount}</div>
+            <div class="page-hero-stat-label">Matches</div>
+          </div>
+          <div class="page-hero-stat-divider"></div>
+          <div class="page-hero-stat">
+            <div class="page-hero-stat-value">✨ ${sparks}</div>
+            <div class="page-hero-stat-label">Sparks</div>
+          </div>
+          <div class="page-hero-stat-divider"></div>
+          <div class="page-hero-stat">
+            <div class="page-hero-stat-value">${profiles.length || '?'}</div>
+            <div class="page-hero-stat-label">Perfis</div>
+          </div>
+        </div>
+      </div>
+
       <div id="stories-bar-container" style="padding:var(--space-sm) 0;border-bottom:1px solid var(--glass-border);overflow-x:auto;-webkit-overflow-scrolling:touch">
         <div style="display:flex;align-items:center;padding:0 var(--space-md);gap:4px;min-height:80px;color:var(--text-muted);font-size:0.8rem">
           Carregando stories...
@@ -603,9 +639,27 @@ function renderMatchesPage(matches = []) {
   return `
     ${renderTopHeader(sparks)}
     <div class="page-content" style="padding:0 0 100px">
-      <div style="padding:var(--space-lg) var(--space-lg) var(--space-sm)">
-        <h1 style="font-family:var(--font-display);font-size:1.4rem;font-weight:800">${t('myMatches')}</h1>
+
+      <!-- ── Hero ── -->
+      <div class="page-hero">
+        <div class="page-hero-eyebrow">💬 Conversas</div>
+        <h1 class="page-hero-title">${t('myMatches')}</h1>
+        <div class="page-hero-stats">
+          <div class="page-hero-stat">
+            <div class="page-hero-stat-value">${matches.length}</div>
+            <div class="page-hero-stat-label">Matches</div>
+          </div>
+          ${matches.length > 0 ? `
+          <div class="page-hero-stat-divider"></div>
+          <div class="page-hero-stat">
+            <div class="page-hero-stat-value" style="color:var(--success)">●</div>
+            <div class="page-hero-stat-label">Online agora</div>
+          </div>` : ''}
+        </div>
+        ${matches.length === 0 ? `<p class="page-hero-sub" style="margin-top:var(--space-sm)">Explore perfis para encontrar seu match!</p>` : ''}
       </div>
+
+      <div style="padding:var(--space-sm) 0">
 
       ${!matches.length ? `
         <div class="empty-state">
@@ -637,6 +691,7 @@ function renderMatchesPage(matches = []) {
           </div>
         `;
       }).join('')}
+      </div>
     </div>
     ${renderBottomNav('matches')}
   `;
@@ -737,27 +792,38 @@ function renderPostCard(post, uid) {
 // ─── FEED PAGE ────────────────────────────────────────────
 function renderFeed() {
   const sparks = VeloraState.currentUser?.profile?.sparks || 0;
+  const user   = VeloraState.currentUser;
+  const photo  = user?.profile?.photoURL || defaultAvatar(user?.displayName || '?');
   return `
     ${renderTopHeader(sparks)}
     <div class="page-content" style="padding:0 0 100px">
-      <!-- Create post -->
-      <div style="padding:var(--space-md) var(--space-lg);border-bottom:1px solid var(--glass-border)">
-        <div style="display:flex;align-items:center;gap:var(--space-md)">
-          <div class="avatar avatar-sm" style="background:var(--bg-surface);overflow:hidden">
-            <img src="${defaultAvatar(VeloraState.currentUser?.profile?.photoURL ? '' : (VeloraState.currentUser?.displayName || '?'))}" style="width:100%;height:100%;object-fit:cover">
+
+      <!-- ── Hero com create post ── -->
+      <div class="page-hero">
+        <div class="page-hero-eyebrow">📣 Comunidade</div>
+        <h1 class="page-hero-title">Feed</h1>
+        <p class="page-hero-sub">Compartilhe com quem faz parte da sua vida</p>
+        <div class="feed-hero-create">
+          <div class="avatar avatar-sm" style="background:var(--bg-surface);overflow:hidden;flex-shrink:0">
+            <img src="${photo}" style="width:100%;height:100%;object-fit:cover" alt="">
           </div>
-          <button class="input-field" style="flex:1;text-align:left;color:var(--text-muted);cursor:pointer;padding:12px 16px" onclick="window._createPost()">
-            ${t('whatsOnYourMind')}
+          <button class="feed-hero-prompt" onclick="window._createPost()">
+            ${t('whatsOnYourMind')}...
           </button>
           <button class="btn btn-primary btn-sm" onclick="window._createPost()">
             ${svgIcon('plus', 16)}
           </button>
         </div>
       </div>
+
       <!-- Posts — preenchidos pelo handler pageReady via Firestore -->
-      <div id="feed-posts">
+      <div id="feed-posts" style="padding:var(--space-md) var(--space-lg)">
         <div class="flex-center" style="height:200px;color:var(--text-muted);font-size:0.9rem">
-          ${svgIcon('discover', 16)} &nbsp; Carregando posts...
+          <div class="loading-dots">
+            <div class="loading-dot"></div>
+            <div class="loading-dot"></div>
+            <div class="loading-dot"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -880,22 +946,26 @@ function renderDiscoverPage() {
   return `
     ${renderTopHeader(sparks)}
     <div class="page-content" style="padding:0 0 100px">
-      <div style="padding:var(--space-lg) var(--space-lg) var(--space-sm);display:flex;align-items:center;justify-content:space-between">
-        <h1 style="font-family:var(--font-display);font-size:1.4rem;font-weight:800">${t('discover')}</h1>
-        <button class="btn btn-ghost btn-sm">
-          ${svgIcon('filter', 16)} Filtros
-        </button>
+
+      <!-- ── Hero com search ── -->
+      <div class="page-hero">
+        <div class="page-hero-eyebrow">🔍 Explorar</div>
+        <h1 class="page-hero-title">${t('discover')}</h1>
+        <p class="page-hero-sub" id="presence-count">Buscando pessoas próximas...</p>
+        <div class="discover-hero-search">
+          ${svgIcon('discover', 18)}
+          <input id="discover-search-input" type="text" placeholder="Nome, interesse, cidade...">
+          <button class="btn btn-ghost btn-sm" style="padding:4px 10px;border-radius:var(--radius-md)" onclick="window._openFilters()">
+            ${svgIcon('filter', 16)}
+          </button>
+        </div>
       </div>
 
-      <!-- Heat map visual -->
-      <div style="margin:0 var(--space-lg) var(--space-lg);padding:var(--space-md);background:var(--bg-card);border:1px solid var(--glass-border);border-radius:var(--radius-lg);text-align:center">
-        <div style="font-size:0.8rem;color:var(--text-muted);margin-bottom:8px;font-family:var(--font-display);font-weight:600;text-transform:uppercase;letter-spacing:0.05em">📍 Usuários próximos</div>
-        <div id="presence-radar" style="height:80px;position:relative;overflow:hidden;border-radius:var(--radius-md)"></div>
-        <div id="presence-count" style="font-size:0.82rem;color:var(--primary);margin-top:8px;font-weight:600">Carregando...</div>
-      </div>
+      <!-- Radar de presença -->
+      <div id="presence-radar" style="height:4px;background:linear-gradient(90deg,var(--primary),var(--accent));opacity:0.4;margin:0"></div>
 
       <!-- Profile grid -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:0 var(--space-lg)">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;padding:var(--space-md) var(--space-lg)">
         ${profiles.map(p => {
           const online = isUserOnline(p);
           return `
@@ -1388,6 +1458,8 @@ function setupGlobalHandlers() {
       window._navigate('matches');
     }
   };
+
+  window._openFilters = () => showToast(t('comingSoon') || 'Filtros em breve!', 'info');
 
   window._openChat = (convId, otherId) => {
     if (VeloraState.chatUnsub) {
