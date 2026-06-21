@@ -293,7 +293,7 @@ export function initParticles() {
 
 // ─── Helpers ──────────────────────────────────────────────
 export function defaultAvatar(name = '?') {
-  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D0D2B&color=00F5D4&bold=true&size=200`;
+  return `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=12141F&color=F7C948&bold=true&size=200`;
 }
 
 export function formatTime(date) {

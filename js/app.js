@@ -997,91 +997,227 @@ function renderDiscoverPage() {
 function renderEditProfileModal() {
   const user    = VeloraState.currentUser;
   const profile = user?.profile || {};
-  const INTERESTS = ['Música','Viagens','Esportes','Filmes','Culinária','Arte',
-    'Tecnologia','Leitura','Fotografia','Dança','Gaming','Natureza','Fitness','Yoga'];
+  const selectedGender = window._editSelectedGender || profile.gender || '';
+  const savedLangs     = window._editSelectedLanguages || profile.languages || [];
+  const savedLooking   = profile.lookingFor || [];
+  const bioLen         = (profile.bio || '').length;
+
+  const INTERESTS = [
+    'Música','Viagens','Esportes','Filmes','Culinária','Arte',
+    'Tecnologia','Leitura','Fotografia','Dança','Gaming','Natureza',
+    'Fitness','Yoga','Meditação','Cinema','Gastronomia','Idiomas',
+  ];
+  const LANG_OPTIONS = [
+    { code: 'pt-BR', flag: '🇧🇷', name: 'Português' },
+    { code: 'en',    flag: '🇺🇸', name: 'Inglês' },
+    { code: 'es',    flag: '🇪🇸', name: 'Espanhol' },
+    { code: 'fr',    flag: '🇫🇷', name: 'Francês' },
+    { code: 'de',    flag: '🇩🇪', name: 'Alemão' },
+    { code: 'it',    flag: '🇮🇹', name: 'Italiano' },
+  ];
+
+  const completionFields = [
+    !!profile.displayName, !!profile.bio, !!profile.photoURL,
+    !!profile.age, !!profile.gender, !!(profile.interests?.length >= 3),
+    !!profile.city, !!(profile.languages?.length),
+  ];
+  const completionPct = Math.round(completionFields.filter(Boolean).length / completionFields.length * 100);
+
   return `
     <div style="display:flex;flex-direction:column;width:100%;min-height:0;flex:1;background:var(--bg-deep);overflow:hidden">
 
       <!-- Header -->
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid var(--glass-border);flex-shrink:0;background:var(--bg-surface)">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid rgba(247,201,72,0.14);flex-shrink:0;background:var(--bg-card)">
         <button onclick="document.querySelector('.modal-overlay')?.remove()"
-          style="width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid var(--glass-border);cursor:pointer;color:var(--text-secondary);font-size:1.1rem;display:flex;align-items:center;justify-content:center">✕</button>
-        <h3 style="font-family:var(--font-display);font-size:1.15rem;font-weight:800;margin:0">Editar Perfil</h3>
+          style="width:38px;height:38px;border-radius:50%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);cursor:pointer;color:var(--text-secondary);font-size:1rem;display:flex;align-items:center;justify-content:center">✕</button>
+        <div style="display:flex;align-items:center;gap:10px">
+          <h3 style="font-family:var(--font-display);font-size:1.1rem;font-weight:800;margin:0">Editar Perfil</h3>
+          <span style="font-size:0.7rem;font-weight:700;padding:3px 8px;border-radius:20px;background:rgba(247,201,72,0.12);color:var(--primary);border:1px solid rgba(247,201,72,0.25)">${completionPct}% completo</span>
+        </div>
         <button class="btn btn-primary btn-sm" id="edit-save-btn" onclick="window._saveEditProfile()">
           <span class="btn-text">Salvar</span>
         </button>
       </div>
 
-      <!-- Body: two-col on desktop, single col on mobile -->
+      <!-- Body -->
       <div style="flex:1;min-height:0;display:flex;overflow:hidden">
 
-        <!-- LEFT: Avatar panel -->
-        <div style="width:320px;flex-shrink:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:32px 24px;background:linear-gradient(160deg,rgba(0,245,212,0.06),rgba(108,99,255,0.1));border-right:1px solid var(--glass-border);overflow-y:auto" class="edit-profile-left">
-          <div style="position:relative;width:140px;height:140px">
-            <div style="width:140px;height:140px;border-radius:50%;overflow:hidden;border:3px solid var(--primary);background:var(--bg-surface);box-shadow:var(--glow-primary)">
-              <img id="edit-avatar-img" src="${profile.photoURL || defaultAvatar(profile.displayName || '?')}" style="width:100%;height:100%;object-fit:cover">
+        <!-- LEFT: Preview panel (desktop) -->
+        <div class="edit-profile-left" style="width:290px;flex-shrink:0;flex-direction:column;align-items:center;padding:24px 18px;gap:14px;background:linear-gradient(160deg,rgba(247,201,72,0.07) 0%,rgba(99,102,241,0.05) 100%);border-right:1px solid rgba(247,201,72,0.12);overflow-y:auto">
+
+          <!-- Avatar + upload -->
+          <div style="position:relative;flex-shrink:0">
+            <div style="width:120px;height:120px;border-radius:50%;overflow:hidden;border:3px solid var(--primary);background:var(--bg-surface);box-shadow:0 0 0 6px rgba(247,201,72,0.08),0 8px 32px rgba(0,0,0,0.4)">
+              <img id="edit-avatar-img" src="${profile.photoURL || defaultAvatar(profile.displayName || '?')}" style="width:100%;height:100%;object-fit:cover" alt="">
             </div>
-            <label style="position:absolute;bottom:4px;right:4px;width:36px;height:36px;border-radius:50%;background:var(--primary);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,0.4)">
-              📷
+            <label for="edit-photo-input" style="position:absolute;bottom:2px;right:2px;width:36px;height:36px;border-radius:50%;background:var(--grad-primary);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(247,201,72,0.5);border:2.5px solid var(--bg-deep)" title="Alterar foto de perfil">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
               <input type="file" id="edit-photo-input" accept="image/*" style="display:none" onchange="window._editPhotoPreview(event)">
             </label>
           </div>
+          <p style="font-size:0.7rem;color:var(--text-muted);margin:0;text-align:center">Toque no ícone para alterar foto</p>
+
+          <!-- Name/info preview -->
           <div style="text-align:center">
-            <div style="font-family:var(--font-display);font-weight:700;font-size:1.1rem">${profile.displayName || 'Usuário'}</div>
-            <div style="font-size:0.82rem;color:var(--text-muted);margin-top:4px">${profile.age ? profile.age + ' anos' : ''}${profile.gender ? ' · ' + profile.gender : ''}</div>
+            <div style="font-family:var(--font-display);font-weight:800;font-size:1.05rem;color:var(--text-primary)">${profile.displayName || 'Seu nome'}</div>
+            <div style="font-size:0.78rem;color:var(--text-muted);margin-top:3px;line-height:1.5">
+              ${[profile.age ? profile.age + ' anos' : '', profile.gender, profile.city ? '📍 ' + profile.city : ''].filter(Boolean).join(' · ')}
+            </div>
           </div>
-          <div style="font-size:0.78rem;color:var(--text-muted);text-align:center;line-height:1.5;max-width:220px">${profile.bio || 'Adicione uma bio para se apresentar!'}</div>
+
+          ${profile.bio ? `<div style="font-size:0.76rem;color:var(--text-muted);text-align:center;line-height:1.55;max-width:230px;font-style:italic">"${profile.bio.replace(/</g,'&lt;')}"</div>` : ''}
+
+          <!-- Completion bar -->
+          <div style="width:100%">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+              <span style="font-size:0.68rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.06em">Perfil</span>
+              <span style="font-size:0.78rem;color:var(--primary);font-weight:800">${completionPct}%</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${completionPct}%"></div></div>
+            <p style="font-size:0.68rem;color:${completionPct === 100 ? 'var(--primary)' : 'var(--text-muted)'};margin:5px 0 0;text-align:center">
+              ${completionPct === 100 ? '✓ Perfil completo!' : 'Complete para mais matches'}
+            </p>
+          </div>
+
+          <!-- Velora Score -->
+          <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(247,201,72,0.06);border:1px solid rgba(247,201,72,0.15);border-radius:12px;width:100%;box-sizing:border-box">
+            ${veloraScoreRing(profile.veloraScore || 75, 38)}
+            <div>
+              <div style="font-size:0.68rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.06em">Velora Score</div>
+              <div style="font-size:1.05rem;font-weight:900;color:var(--primary)">${profile.veloraScore || 75} pts</div>
+            </div>
+          </div>
+
+          <!-- Gallery -->
+          <div style="width:100%">
+            <div style="font-size:0.68rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:8px">📸 Galeria de fotos</div>
+            <div id="edit-gallery-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:5px">
+              <label style="aspect-ratio:1;border:2px dashed rgba(247,201,72,0.28);border-radius:8px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:rgba(247,201,72,0.04)" title="Adicionar foto">
+                <input type="file" accept="image/*" style="display:none" onchange="window._uploadGalleryPhotoInEdit(event)">
+                <span style="font-size:1.3rem;color:var(--primary)">+</span>
+              </label>
+            </div>
+            <p style="font-size:0.68rem;color:var(--text-muted);margin:5px 0 0;text-align:center">Mais fotos = mais matches</p>
+          </div>
         </div>
 
         <!-- RIGHT: Form fields -->
-        <div style="flex:1;overflow-y:auto;padding:28px 32px" class="edit-profile-right">
+        <div style="flex:1;overflow-y:auto;padding:20px 24px 48px" class="edit-profile-right">
 
-          <div class="input-group">
-            <label class="input-label">Nome</label>
-            <input class="input-field" id="edit-name" value="${profile.displayName || ''}" placeholder="Seu nome" maxlength="40">
+          <!-- § Informações Básicas -->
+          <div style="font-size:0.7rem;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:14px;display:flex;align-items:center;gap:8px">
+            Informações Básicas
+            <div style="flex:1;height:1px;background:rgba(247,201,72,0.18)"></div>
           </div>
 
           <div class="input-group">
-            <label class="input-label">Bio <span style="color:var(--text-muted);font-size:0.8rem">(máx. 150 caracteres)</span></label>
-            <textarea class="input-field" id="edit-bio" rows="3" maxlength="150" placeholder="Fale sobre você..." style="resize:none;height:80px;font-family:inherit">${profile.bio || ''}</textarea>
+            <label class="input-label">Nome completo</label>
+            <input class="input-field" id="edit-name" value="${(profile.displayName || '').replace(/"/g,'&quot;')}" placeholder="Seu nome" maxlength="40">
           </div>
 
-          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+          <div class="input-group">
+            <label class="input-label" style="display:flex;justify-content:space-between;align-items:center">
+              <span>Bio</span>
+              <span style="font-weight:400;color:var(--text-muted);font-size:0.75rem"><span id="bio-counter">${bioLen}</span>/150</span>
+            </label>
+            <textarea class="input-field" id="edit-bio" rows="3" maxlength="150"
+              placeholder="Fale sobre você de forma autêntica..."
+              style="resize:none;height:84px;font-family:inherit;line-height:1.5"
+              oninput="document.getElementById('bio-counter').textContent=this.value.length">${(profile.bio || '').replace(/</g,'&lt;')}</textarea>
+            <p style="font-size:0.7rem;color:var(--text-muted);margin:3px 0 0">Perfis com bio recebem 3× mais conexões</p>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="input-group" style="margin-bottom:0">
               <label class="input-label">Idade</label>
               <input class="input-field" id="edit-age" type="number" min="18" max="99" value="${profile.age || ''}" placeholder="Ex: 25">
             </div>
             <div class="input-group" style="margin-bottom:0">
-              <label class="input-label">Procurando</label>
-              <select class="input-field" id="edit-looking" style="cursor:pointer">
-                <option value="">Selecione</option>
-                ${['dating','friendship','casual','networking'].map(v =>
-                  `<option value="${v}" ${(profile.lookingFor || []).includes(v) ? 'selected' : ''}>${
-                    v === 'dating' ? 'Relacionamento' : v === 'friendship' ? 'Amizade' : v === 'casual' ? 'Casual' : 'Networking'
-                  }</option>`
-                ).join('')}
-              </select>
+              <label class="input-label">Cidade</label>
+              <input class="input-field" id="edit-city" value="${(profile.city || '').replace(/"/g,'&quot;')}" placeholder="Ex: São Paulo">
             </div>
           </div>
 
-          <div class="input-group" style="margin-top:16px">
+          <!-- § O que você procura -->
+          <div style="font-size:0.7rem;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:0.1em;margin:20px 0 14px;display:flex;align-items:center;gap:8px">
+            O que você procura
+            <div style="flex:1;height:1px;background:rgba(247,201,72,0.18)"></div>
+          </div>
+
+          <div class="input-group">
+            <label class="input-label">Tipo de conexão <span style="font-weight:400;color:var(--text-muted);text-transform:none;letter-spacing:0">(selecione quantos quiser)</span></label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+              ${[
+                { v: 'dating',     label: '💕 Relacionamento' },
+                { v: 'friendship', label: '🤝 Amizade' },
+                { v: 'casual',     label: '🌊 Casual' },
+                { v: 'networking', label: '💼 Networking' },
+              ].map(opt => `
+                <button type="button" class="btn btn-sm ${savedLooking.includes(opt.v) ? 'btn-primary' : 'btn-ghost'}"
+                  data-looking="${opt.v}" onclick="window._editToggleLooking('${opt.v}',this)"
+                  style="justify-content:flex-start;gap:6px;font-size:0.82rem">${opt.label}</button>
+              `).join('')}
+            </div>
+          </div>
+
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
+            <div class="input-group" style="margin-bottom:0">
+              <label class="input-label">Idade mínima</label>
+              <input class="input-field" id="edit-age-min" type="number" min="18" max="99" value="${profile.ageMin || 18}">
+            </div>
+            <div class="input-group" style="margin-bottom:0">
+              <label class="input-label">Idade máxima</label>
+              <input class="input-field" id="edit-age-max" type="number" min="18" max="99" value="${profile.ageMax || 50}">
+            </div>
+          </div>
+
+          <!-- § Identidade -->
+          <div style="font-size:0.7rem;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:0.1em;margin:20px 0 14px;display:flex;align-items:center;gap:8px">
+            Identidade
+            <div style="flex:1;height:1px;background:rgba(247,201,72,0.18)"></div>
+          </div>
+
+          <div class="input-group">
             <label class="input-label">Gênero</label>
-            <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px" id="edit-gender-grid">
-              ${['Homem','Mulher','Não-binário','Outro'].map(g => `
-                <button type="button" class="btn btn-sm ${profile.gender === g ? 'btn-primary' : 'btn-ghost'}"
-                  data-gender="${g}" onclick="window._editSelectGender('${g}')">${g}</button>
+            <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px" id="edit-gender-grid">
+              ${[
+                { g: 'Homem',       icon: '♂' },
+                { g: 'Mulher',      icon: '♀' },
+                { g: 'Não-binário', icon: '⚧' },
+                { g: 'Outro',       icon: '◎' },
+              ].map(({ g, icon }) => `
+                <button type="button" class="btn btn-sm ${selectedGender === g ? 'btn-primary' : 'btn-ghost'}"
+                  data-gender="${g}" onclick="window._editSelectGender('${g}')"
+                  style="justify-content:center;gap:5px">${icon} ${g}</button>
               `).join('')}
             </div>
           </div>
 
-          <div class="input-group" style="margin-top:16px">
-            <label class="input-label">Interesses</label>
-            <div style="display:flex;flex-wrap:wrap;gap:8px" id="edit-interests-wrap">
-              ${INTERESTS.map(i => `
-                <span class="tag ${(profile.interests || []).includes(i) ? 'active' : ''}"
-                  data-interest="${i}" onclick="this.classList.toggle('active')">${i}</span>
-              `).join('')}
-            </div>
+          <!-- § Interesses -->
+          <div style="font-size:0.7rem;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:0.1em;margin:20px 0 14px;display:flex;align-items:center;gap:8px">
+            Interesses
+            <div style="flex:1;height:1px;background:rgba(247,201,72,0.18)"></div>
+          </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:8px" id="edit-interests-wrap">
+            ${INTERESTS.map(i => `
+              <span class="chip ${(profile.interests || []).includes(i) ? 'active' : ''}"
+                data-interest="${i}" onclick="this.classList.toggle('active')">${i}</span>
+            `).join('')}
+          </div>
+          <p style="font-size:0.7rem;color:var(--text-muted);margin:8px 0 0">Selecione ao menos 3 para melhores matches</p>
+
+          <!-- § Idiomas -->
+          <div style="font-size:0.7rem;font-weight:800;color:var(--primary);text-transform:uppercase;letter-spacing:0.1em;margin:20px 0 14px;display:flex;align-items:center;gap:8px">
+            Idiomas que você fala
+            <div style="flex:1;height:1px;background:rgba(247,201,72,0.18)"></div>
+          </div>
+
+          <div style="display:flex;flex-wrap:wrap;gap:8px" id="edit-langs-wrap">
+            ${LANG_OPTIONS.map(l => `
+              <span class="chip ${savedLangs.includes(l.code) ? 'active' : ''}"
+                data-lang="${l.code}" onclick="this.classList.toggle('active')">${l.flag} ${l.name}</span>
+            `).join('')}
           </div>
 
         </div>
@@ -1622,10 +1758,26 @@ function setupGlobalHandlers() {
     }
   };
 
-  window._editProfile = () => {
-    window._editSelectedGender = VeloraState.currentUser?.profile?.gender || '';
+  window._editProfile = async () => {
+    window._editSelectedGender    = VeloraState.currentUser?.profile?.gender || '';
+    window._editSelectedLanguages = [...(VeloraState.currentUser?.profile?.languages || [])];
     window._editPhotoFile = null;
     showModal(renderEditProfileModal(), { fullscreen: true });
+    // Load existing gallery photos asynchronously after modal is shown
+    const uid = VeloraState.currentUser?.uid;
+    if (uid) {
+      try {
+        const photos = await getUserGallery(uid);
+        const grid = document.getElementById('edit-gallery-grid');
+        if (grid && photos.length) {
+          const addLabel = grid.querySelector('label');
+          const thumbsHTML = photos.slice(0, 5).map(p =>
+            `<div style="aspect-ratio:1;border-radius:8px;overflow:hidden"><img src="${p.url}" style="width:100%;height:100%;object-fit:cover" alt=""></div>`
+          ).join('');
+          if (addLabel) addLabel.insertAdjacentHTML('beforebegin', thumbsHTML);
+        }
+      } catch { /* non-critical */ }
+    }
   };
 
   window._editSelectGender = (gender) => {
@@ -1647,18 +1799,62 @@ function setupGlobalHandlers() {
     reader.readAsDataURL(file);
   };
 
+  window._editToggleLooking = (value, btn) => {
+    const wasPrimary = btn.classList.contains('btn-primary');
+    btn.className = `btn btn-sm ${wasPrimary ? 'btn-ghost' : 'btn-primary'}`;
+    btn.style.cssText = 'justify-content:flex-start;gap:6px;font-size:0.82rem';
+  };
+
+  window._uploadGalleryPhotoInEdit = async (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const uid = VeloraState.currentUser?.uid;
+    if (!uid) return;
+    const label = event.target.closest('label');
+    if (label) label.style.opacity = '0.5';
+    try {
+      showToast('Enviando foto...', 'info');
+      await uploadPhoto(uid, file, false, () => {});
+      showToast('Foto adicionada! ✨', 'success');
+      const grid = document.getElementById('edit-gallery-grid');
+      if (grid) {
+        const photos = await getUserGallery(uid);
+        const lastPhoto = photos[photos.length - 1];
+        if (lastPhoto) {
+          const thumb = document.createElement('div');
+          thumb.style.cssText = 'aspect-ratio:1;border-radius:8px;overflow:hidden';
+          thumb.innerHTML = `<img src="${lastPhoto.url}" style="width:100%;height:100%;object-fit:cover" alt="">`;
+          const addLabel = grid.querySelector('label');
+          if (addLabel) grid.insertBefore(thumb, addLabel);
+        }
+      }
+    } catch (err) {
+      showToast('Erro: ' + (err.message || 'tente novamente'), 'error');
+    } finally {
+      if (label) { label.style.opacity = '1'; event.target.value = ''; }
+    }
+  };
+
   window._saveEditProfile = async () => {
     const uid = VeloraState.currentUser?.uid || auth.currentUser?.uid;
     if (!uid) { showToast('Sessão expirada. Faça login novamente.', 'error'); return; }
 
-    const name = document.getElementById('edit-name')?.value?.trim();
-    const bio  = document.getElementById('edit-bio')?.value?.trim();
-    const age  = parseInt(document.getElementById('edit-age')?.value) || undefined;
-    const interests = [...document.querySelectorAll('#edit-interests-wrap .tag.active[data-interest]')]
+    const name   = document.getElementById('edit-name')?.value?.trim();
+    const bio    = document.getElementById('edit-bio')?.value?.trim();
+    const age    = parseInt(document.getElementById('edit-age')?.value) || undefined;
+    const city   = document.getElementById('edit-city')?.value?.trim() || '';
+    const ageMin = parseInt(document.getElementById('edit-age-min')?.value) || 18;
+    const ageMax = parseInt(document.getElementById('edit-age-max')?.value) || 50;
+    const interests = [...document.querySelectorAll('#edit-interests-wrap .chip.active[data-interest]')]
       .map(el => el.dataset.interest);
+    const languages = [...document.querySelectorAll('#edit-langs-wrap .chip.active[data-lang]')]
+      .map(el => el.dataset.lang);
+    const lookingFor = [...document.querySelectorAll('[data-looking].btn-primary')]
+      .map(el => el.dataset.looking);
 
     if (!name) { showToast('Nome é obrigatório', 'error'); return; }
     if (age && (age < 18 || age > 99)) { showToast('Idade inválida (18–99)', 'error'); return; }
+    if (ageMin > ageMax) { showToast('Idade mínima maior que máxima', 'error'); return; }
 
     const saveBtn = document.getElementById('edit-save-btn');
     if (saveBtn) saveBtn.classList.add('btn-loading');
@@ -1676,9 +1872,14 @@ function setupGlobalHandlers() {
         displayName: name,
         bio:         bio || '',
         interests,
-        gender:      window._editSelectedGender || VeloraState.currentUser?.profile?.gender || '',
-        ...(age       ? { age }      : {}),
-        ...(photoURL  ? { photoURL } : {}),
+        languages,
+        city,
+        ageMin,
+        ageMax,
+        gender:     window._editSelectedGender || VeloraState.currentUser?.profile?.gender || '',
+        lookingFor: lookingFor.length ? lookingFor : (VeloraState.currentUser?.profile?.lookingFor || []),
+        ...(age      ? { age }      : {}),
+        ...(photoURL ? { photoURL } : {}),
       };
 
       await updateUserProfile(uid, updates);
