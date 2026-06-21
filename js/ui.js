@@ -356,30 +356,33 @@ export function svgIcon(name, size = 24) {
 }
 
 export function veloraScoreRing(score, size = 72) {
-  const r = (size / 2) - 8;
-  const circ = 2 * Math.PI * r;
-  const fill = circ - (score / 100) * circ;
+  const sw = Math.max(3, Math.round(size * 0.07));
+  const r  = (size / 2) - sw - 1;
+  const circ  = 2 * Math.PI * r;
+  const offset = circ - (score / 100) * circ;
+  const gradId = `sg_${size}`;
+  const fontSize = Math.max(9, Math.round(size * 0.22));
   return `
     <div class="velora-score">
       <div class="score-ring" style="width:${size}px;height:${size}px">
         <svg viewBox="0 0 ${size} ${size}" width="${size}" height="${size}">
           <defs>
-            <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" style="stop-color:#00F5D4"/>
-              <stop offset="100%" style="stop-color:#FF2BD6"/>
+            <linearGradient id="${gradId}" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#F7C948"/>
+              <stop offset="100%" stop-color="#FF9500"/>
             </linearGradient>
           </defs>
-          <circle class="score-ring-track" cx="${size/2}" cy="${size/2}" r="${r}"/>
-          <circle class="score-ring-fill"
-            cx="${size/2}" cy="${size/2}" r="${r}"
-            stroke-dasharray="${circ}"
-            stroke-dashoffset="${fill}"
-            style="--target-offset:${fill}"
-          />
+          <circle cx="${size/2}" cy="${size/2}" r="${r}"
+            fill="none" stroke="rgba(247,201,72,0.15)" stroke-width="${sw}"/>
+          <circle cx="${size/2}" cy="${size/2}" r="${r}"
+            fill="none" stroke="url(#${gradId})" stroke-width="${sw}"
+            stroke-linecap="round"
+            stroke-dasharray="${circ.toFixed(1)}"
+            stroke-dashoffset="${offset.toFixed(1)}"/>
         </svg>
-        <div class="score-value">${score}</div>
+        <div class="score-ring-value" style="font-size:${fontSize}px">${score}</div>
       </div>
-      <div class="score-label">VeloraScore™</div>
+      <div class="score-ring-label">VeloraScore™</div>
     </div>
   `;
 }

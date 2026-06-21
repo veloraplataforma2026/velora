@@ -1112,7 +1112,7 @@ function renderEditProfileModal() {
 
           <div class="input-group">
             <label class="input-label">Nome completo</label>
-            <input class="input-field" id="edit-name" value="${(profile.displayName || '').replace(/"/g,'&quot;')}" placeholder="Seu nome" maxlength="40">
+            <input type="text" id="edit-name" value="${(profile.displayName || '').replace(/"/g,'&quot;')}" placeholder="Seu nome" maxlength="40">
           </div>
 
           <div class="input-group">
@@ -1120,7 +1120,7 @@ function renderEditProfileModal() {
               <span>Bio</span>
               <span style="font-weight:400;color:var(--text-muted);font-size:0.75rem"><span id="bio-counter">${bioLen}</span>/150</span>
             </label>
-            <textarea class="input-field" id="edit-bio" rows="3" maxlength="150"
+            <textarea id="edit-bio" rows="3" maxlength="150"
               placeholder="Fale sobre você de forma autêntica..."
               style="resize:none;height:84px;font-family:inherit;line-height:1.5"
               oninput="document.getElementById('bio-counter').textContent=this.value.length">${(profile.bio || '').replace(/</g,'&lt;')}</textarea>
@@ -1130,11 +1130,11 @@ function renderEditProfileModal() {
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
             <div class="input-group" style="margin-bottom:0">
               <label class="input-label">Idade</label>
-              <input class="input-field" id="edit-age" type="number" min="18" max="99" value="${profile.age || ''}" placeholder="Ex: 25">
+              <input type="number" id="edit-age" min="18" max="99" value="${profile.age || ''}" placeholder="Ex: 25">
             </div>
             <div class="input-group" style="margin-bottom:0">
               <label class="input-label">Cidade</label>
-              <input class="input-field" id="edit-city" value="${(profile.city || '').replace(/"/g,'&quot;')}" placeholder="Ex: São Paulo">
+              <input type="text" id="edit-city" value="${(profile.city || '').replace(/"/g,'&quot;')}" placeholder="Ex: São Paulo">
             </div>
           </div>
 
@@ -1163,11 +1163,11 @@ function renderEditProfileModal() {
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:10px">
             <div class="input-group" style="margin-bottom:0">
               <label class="input-label">Idade mínima</label>
-              <input class="input-field" id="edit-age-min" type="number" min="18" max="99" value="${profile.ageMin || 18}">
+              <input type="number" id="edit-age-min" min="18" max="99" value="${profile.ageMin || 18}">
             </div>
             <div class="input-group" style="margin-bottom:0">
               <label class="input-label">Idade máxima</label>
-              <input class="input-field" id="edit-age-max" type="number" min="18" max="99" value="${profile.ageMax || 50}">
+              <input type="number" id="edit-age-max" min="18" max="99" value="${profile.ageMax || 50}">
             </div>
           </div>
 
