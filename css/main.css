@@ -551,8 +551,16 @@ h1, h2, h3, h4, h5, h6 {
 
 .profile-cover {
   height: 180px;
-  background: linear-gradient(135deg, #3730A3, #6366F1, #F7C948);
+  background: linear-gradient(135deg, #1A1B35 0%, #2D2F6B 35%, #4F46E5 65%, #7C4DCC 85%, rgba(247,201,72,0.85) 100%);
   position: relative; overflow: visible;
+}
+.profile-cover::after {
+  content: '';
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(to bottom, transparent 50%, rgba(14,15,24,0.55) 100%),
+    repeating-linear-gradient(45deg, transparent, transparent 22px, rgba(247,201,72,0.05) 22px, rgba(247,201,72,0.05) 23px);
+  pointer-events: none;
 }
 
 .profile-cover .profile-avatar-hero {
@@ -574,7 +582,7 @@ h1, h2, h3, h4, h5, h6 {
 .profile-hero-info { flex: 1; min-width: 0; }
 .profile-name {
   font-family: var(--font-display); font-size: 1.5rem; font-weight: 800;
-  line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  line-height: 1.2;
 }
 .profile-sub { color: var(--text-muted); font-size: 0.85rem; margin-top: 4px; }
 .profile-hero-score { flex-shrink: 0; }
@@ -654,19 +662,33 @@ h1, h2, h3, h4, h5, h6 {
     width: 100%; border-radius: var(--radius-md); gap: 12px; height: auto;
     border: 1px solid transparent;
     color: rgba(240,242,255,0.4);
+    position: relative;
   }
   .nav-item:hover {
-    background: rgba(247,201,72,0.06);
+    background: rgba(247,201,72,0.05);
     color: rgba(240,242,255,0.75);
     border-color: transparent;
   }
+  /* Active: left accent bar + subtle tint, sem pill pesado */
   .nav-item.active {
-    background: rgba(247,201,72,0.12);
-    border: 1px solid rgba(247,201,72,0.35);
+    background: rgba(247,201,72,0.07);
+    border: 1px solid transparent;
     color: var(--primary);
-    box-shadow: 0 0 20px rgba(247,201,72,0.08);
+    font-weight: 600;
   }
-  .nav-item.active svg { filter: drop-shadow(0 0 8px rgba(247,201,72,0.8)); }
+  .nav-item.active::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 18%; height: 64%;
+    width: 3px;
+    background: var(--grad-primary);
+    border-radius: 0 3px 3px 0;
+    box-shadow: 0 0 10px rgba(247,201,72,0.7), 0 0 20px rgba(247,201,72,0.3);
+  }
+  .nav-item.active svg {
+    filter: drop-shadow(0 0 6px rgba(247,201,72,0.8));
+    color: var(--primary);
+  }
 
   .top-header .logo-text { display: none; }
   .top-header { justify-content: flex-end; padding: 12px var(--space-xl); gap: 12px; }

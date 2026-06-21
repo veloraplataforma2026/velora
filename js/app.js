@@ -79,6 +79,11 @@ function isUserOnline(profile) {
   return (Date.now() / 1000 - secs) < 600;
 }
 
+function getUserAvatar(profile, displayName) {
+  const url = profile?.photoURL || '';
+  return (url && !url.includes('ui-avatars.com')) ? url : defaultAvatar(displayName || '?');
+}
+
 function getGreeting() {
   const h = new Date().getHours();
   const lang = i18n.getCurrentLang();
@@ -851,7 +856,7 @@ function renderProfilePage() {
       <!-- Cover + avatar (avatar positioned absolute hanging below cover) -->
       <div class="profile-cover">
         <div class="profile-avatar-hero">
-          <img src="${profile?.photoURL || defaultAvatar(user?.displayName || '?')}" style="width:100%;height:100%;object-fit:cover" alt="Profile">
+          <img src="${getUserAvatar(profile, user?.displayName)}" style="width:100%;height:100%;object-fit:cover" alt="Profile">
         </div>
         <button class="btn btn-ghost btn-sm profile-edit-btn" onclick="window._editProfile()">
           ${svgIcon('settings', 16)} ${t('editProfile')}
@@ -904,7 +909,7 @@ function renderProfilePage() {
             <div style="margin-bottom:var(--space-lg)">
               <div class="section-title" style="margin-bottom:var(--space-sm)">${t('yourInterests')}</div>
               <div style="display:flex;flex-wrap:wrap;gap:8px">
-                ${(profile.interests || []).map(i => `<span class="tag active">${i}</span>`).join('')}
+                ${(profile.interests || []).map(i => `<span class="chip active">${i}</span>`).join('')}
               </div>
             </div>
           ` : ''}
@@ -1048,7 +1053,7 @@ function renderEditProfileModal() {
           <!-- Avatar + upload -->
           <div style="position:relative;flex-shrink:0">
             <div style="width:120px;height:120px;border-radius:50%;overflow:hidden;border:3px solid var(--primary);background:var(--bg-surface);box-shadow:0 0 0 6px rgba(247,201,72,0.08),0 8px 32px rgba(0,0,0,0.4)">
-              <img id="edit-avatar-img" src="${profile.photoURL || defaultAvatar(profile.displayName || '?')}" style="width:100%;height:100%;object-fit:cover" alt="">
+              <img id="edit-avatar-img" src="${getUserAvatar(profile, profile.displayName)}" style="width:100%;height:100%;object-fit:cover" alt="">
             </div>
             <label for="edit-photo-input" style="position:absolute;bottom:2px;right:2px;width:36px;height:36px;border-radius:50%;background:var(--grad-primary);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 12px rgba(247,201,72,0.5);border:2.5px solid var(--bg-deep)" title="Alterar foto de perfil">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
